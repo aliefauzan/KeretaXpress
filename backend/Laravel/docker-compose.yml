@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  tesbackend:
+    build:
+      context: ./tesbackend
+      dockerfile: Dockerfile
+    container_name: tesbackend-container
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./tesbackend:/var/www/html
+      - ./tesbackend/storage:/var/www/html/storage
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:YOUR_APP_KEY_HERE
+      - DB_CONNECTION=pgsql
+      - DB_HOST=your-supabase-host
+      - DB_PORT=5432
+      - DB_DATABASE=your_database
+      - DB_USERNAME=your_username
+      - DB_PASSWORD=your_password
+    # No depends_on since using external Supabase DB
+
+volumes:
+  dbdata:
