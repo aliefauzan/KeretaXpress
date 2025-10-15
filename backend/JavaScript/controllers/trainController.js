@@ -9,7 +9,17 @@ class TrainController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const { departure_station, arrival_station, date } = req.query;
@@ -17,10 +27,9 @@ class TrainController {
       // Validate different stations
       if (departure_station === arrival_station) {
         return res.status(422).json({ 
-          errors: [{ 
-            field: 'arrival_station',
-            message: 'Arrival station must be different from departure station' 
-          }] 
+          errors: {
+            arrival_station: ['Arrival station must be different from departure station']
+          }
         });
       }
 

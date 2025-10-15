@@ -15,10 +15,27 @@ class AuthController {
   // Register new user
   static async register(req, res) {
     try {
+      console.log('📝 Register request received:', {
+        body: req.body,
+        headers: req.headers['content-type']
+      });
+
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        console.log('❌ Validation errors:', errors.array());
+        
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const { name, email, password } = req.body;
@@ -27,10 +44,9 @@ class AuthController {
       const existingUser = await User.findByEmail(email);
       if (existingUser) {
         return res.status(422).json({ 
-          errors: [{ 
-            field: 'email', 
-            message: 'Email already exists' 
-          }] 
+          errors: {
+            email: ['The email has already been taken.']
+          }
         });
       }
 
@@ -62,7 +78,17 @@ class AuthController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const { email, password } = req.body;

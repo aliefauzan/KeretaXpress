@@ -23,7 +23,17 @@ class BookingController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const {
@@ -130,7 +140,17 @@ class BookingController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const { user_uuid } = req.query;
@@ -157,7 +177,17 @@ class BookingController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
+        // Format errors to match Laravel format
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        
+        return res.status(422).json({ errors: formattedErrors });
       }
 
       const { transactionId } = req.params;
