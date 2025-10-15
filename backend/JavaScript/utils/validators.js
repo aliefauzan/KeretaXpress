@@ -4,21 +4,22 @@ import { body, query, param } from 'express-validator';
 export const registerValidation = [
   body('name')
     .trim()
-    .notEmpty().withMessage('Name is required')
-    .isLength({ min: 3, max: 255 }).withMessage('Name must be between 3 and 255 characters'),
+    .notEmpty().withMessage('The name field is required.')
+    .isLength({ max: 255 }).withMessage('The name field must not be greater than 255 characters.'),
   body('email')
     .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Must be a valid email')
-    .normalizeEmail(),
+    .notEmpty().withMessage('The email field is required.')
+    .isEmail().withMessage('The email field must be a valid email address.')
+    .normalizeEmail()
+    .isLength({ max: 255 }).withMessage('The email field must not be greater than 255 characters.'),
   body('password')
-    .notEmpty().withMessage('Password is required')
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    .notEmpty().withMessage('The password field is required.')
+    .isLength({ min: 8 }).withMessage('The password field must be at least 8 characters.'),
   body('password_confirmation')
-    .notEmpty().withMessage('Password confirmation is required')
+    .notEmpty().withMessage('The password confirmation field is required.')
     .custom((value, { req }) => {
       if (value !== req.body.password) {
-        throw new Error('Password confirmation does not match');
+        throw new Error('The password confirmation does not match.');
       }
       return true;
     })
@@ -27,11 +28,11 @@ export const registerValidation = [
 export const loginValidation = [
   body('email')
     .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Must be a valid email')
+    .notEmpty().withMessage('The email field is required.')
+    .isEmail().withMessage('The email field must be a valid email address.')
     .normalizeEmail(),
   body('password')
-    .notEmpty().withMessage('Password is required')
+    .notEmpty().withMessage('The password field is required.')
 ];
 
 // Train validations
