@@ -105,8 +105,3 @@ export const updateBookingStatusValidation = [
     .withMessage('Status must be one of: pending, confirmed, cancelled, paid')
 ];
 
-// Payment validations
-export const uploadPaymentProofValidation = [
-  param('id')
-    .notEmpty().withMessage('Transaction ID is required')
-];
