@@ -9,6 +9,9 @@ const router = express.Router();
 router.post('/register', registerValidation, AuthController.register);
 router.post('/login', loginValidation, AuthController.login);
 
+// Admin routes
+router.post('/admin/login', loginValidation, AuthController.adminLogin);
+
 // Protected routes
 router.post('/logout', authMiddleware, AuthController.logout);
 router.post('/refresh', authMiddleware, AuthController.refresh);
