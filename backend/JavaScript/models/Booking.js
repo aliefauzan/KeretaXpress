@@ -126,14 +126,14 @@ class Booking {
     }
   }
 
-  static async updatePaymentProof(transactionId, paymentProofUrl, status = 'confirmed') {
+  static async updatePaymentData(transactionId, paymentData) {
     try {
       const result = await pool.query(
         `UPDATE bookings 
-         SET payment_proof = $1, status = $2, updated_at = NOW()
-         WHERE transaction_id = $3
+         SET payment_data = $1, updated_at = NOW()
+         WHERE transaction_id = $2
          RETURNING *`,
-        [paymentProofUrl, status, transactionId]
+        [JSON.stringify(paymentData), transactionId]
       );
       return result.rows[0];
     } catch (error) {
