@@ -20,13 +20,17 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-// Test connection
+// Test connection - only log once
+let isFirstConnection = true;
 pool.on('connect', () => {
-  console.log('Database connected successfully');
+  if (isFirstConnection) {
+    console.log('✓ Database connection pool initialized');
+    isFirstConnection = false;
+  }
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('✗ Unexpected error on idle database client:', err);
   process.exit(-1);
 });
 
