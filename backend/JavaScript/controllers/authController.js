@@ -12,6 +12,15 @@ class AuthController {
     );
   }
 
+  // Generate JWT token for admin
+  static generateAdminToken(adminId) {
+    return jwt.sign(
+      { adminId },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+  }
+
   // Register new user
   static async register(req, res) {
     try {
@@ -180,6 +189,70 @@ class AuthController {
       return res.status(200).json({ user: req.user });
     } catch (error) {
       console.error('User fetching error:', error);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+  }
+
+  // ==================== ADMIN AUTHENTICATION ====================
+
+  // Admin login
+  static async adminLogin(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        const formattedErrors = {};
+        errors.array().forEach(error => {
+          const field = error.path || error.param;
+          if (!formattedErrors[field]) {
+            formattedErrors[field] = [];
+          }
+          formattedErrors[field].push(error.msg);
+        });
+        return res.status(422).json({ errors: formattedErrors });
+      }
+
+      const { email, password } = req.body;
+
+      // Import pool here to avoid circular dependencies
+      const pool = (await import('../config/database.js')).default;
+
+      // Find admin by email
+      const result = await pool.query(
+        'SELECT * FROM admins WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(401).json({ message: 'Invalid admin credentials' });
+      }
+
+      const admin = result.rows[0];
+
+      // Verify password (assuming you use bcrypt for admins too)
+      const bcrypt = (await import('bcryptjs')).default;
+      const isValidPassword = await bcrypt.compare(password, admin.password);
+
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Invalid admin credentials' });
+      }
+
+      // Generate admin token
+      const token = AuthController.generateAdminToken(admin.id);
+
+      return res.status(200).json({
+        admin: {
+          id: admin.id,
+          uuid: admin.uuid,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          created_at: admin.created_at
+        },
+        token,
+        message: 'Admin login successful'
+      });
+    } catch (error) {
+      console.error('Admin login error:', error);
       return res.status(500).json({ message: 'Internal server error' });
     }
   }

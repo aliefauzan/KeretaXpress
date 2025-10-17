@@ -96,7 +96,7 @@ class BookingController {
         [train_id]
       );
 
-      // Create booking
+      // Create booking with 'pending' status (waiting for payment)
       const transactionId = BookingController.generateTransactionId();
       const bookingData = {
         transactionId,
@@ -109,7 +109,7 @@ class BookingController {
         passengerGender: passenger_gender,
         seatNumber: seat_number,
         paymentMethod: payment_method,
-        status: '',
+        status: 'pending', // Initial status - waiting for payment
         totalPrice: train.price
       };
 
@@ -117,6 +117,8 @@ class BookingController {
 
       // Commit transaction
       await client.query('COMMIT');
+
+      console.log('✅ Booking created with status: pending, transaction_id:', transactionId);
 
       return res.status(201).json(booking);
     } catch (error) {
