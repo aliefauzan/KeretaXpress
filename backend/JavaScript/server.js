@@ -36,10 +36,25 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet());
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['*'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in the allowed list
+    if (corsOrigins.includes('*') || corsOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies

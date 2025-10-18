@@ -1,0 +1,66 @@
+steps:
+  # 1. Fetch .env from Secret Manager
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fetch-env'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret="express-backend-env" > backend/JavaScript/.env
+
+  # 2. Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - build
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+      - -f
+      - backend/JavaScript/Dockerfile
+      - backend/JavaScript
+
+  # 3. Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+
+  # 4. Deploy image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-to-cloudrun'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --max-instances=10
+      - --min-instances=0
+      - --quiet
+
+images:
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _AR_PROJECT_ID: tubesabp-459213
+  _PLATFORM: managed
+  _SERVICE_NAME: express-backend-api
+  REPO_NAME: tubesabp
+  _DEPLOY_REGION: asia-southeast2
+  _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
+  _AR_REPOSITORY: cloud-run-source-deploy
+
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - express-backend-api
