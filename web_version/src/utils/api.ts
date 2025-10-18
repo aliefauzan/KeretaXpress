@@ -299,36 +299,43 @@ export const bookingService = {
       console.error('Error updating booking status:', error);
       throw error;
     }
-  },
-
-  uploadPaymentProof: async (bookingId: number, file: File) => {
-    try {
-      const formData = new FormData();
-      formData.append('proof', file);
-      
-      return await apiClient.post(`/payments/${bookingId}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-    } catch (error) {
-      console.error('Error uploading payment proof:', error);
-      throw error;
-    }
   }
 };
 
 // Payment services
 export const paymentService = {
-  uploadPaymentProof: async (bookingId: number, formData: FormData) => {
+  // Create Midtrans payment
+  createPayment: async (transactionId: string, useQrPayment: boolean = false) => {
     try {
-      return await apiClient.post(`/payments/${bookingId}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await apiClient.post('/payments/create', { 
+        transaction_id: transactionId,
+        use_qr_payment: useQrPayment
       });
+      return response;
     } catch (error) {
-      console.error('Error uploading payment proof:', error);
+      console.error('Error creating payment:', error);
+      throw error;
+    }
+  },
+
+  // Check payment status
+  checkPaymentStatus: async (transactionId: string) => {
+    try {
+      const response = await apiClient.get(`/payments/status/${transactionId}`);
+      return response;
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      throw error;
+    }
+  },
+
+  // Get payment details from payments table
+  getPaymentDetails: async (transactionId: string) => {
+    try {
+      const response = await apiClient.get(`/payments/details/${transactionId}`);
+      return response;
+    } catch (error) {
+      console.error('Error getting payment details:', error);
       throw error;
     }
   }
