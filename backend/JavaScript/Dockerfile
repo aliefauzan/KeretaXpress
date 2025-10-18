@@ -28,7 +28,7 @@ COPY .env /app/.env
 # RUN addgroup -g 1001 -S nodejs && \
 #   adduser -S nodejs -u 1001 && \
 #    chown -R nodejs:nodejs /app
-
+RUN npm install
 # USER nodejs
 
 # Expose the port your app runs on
