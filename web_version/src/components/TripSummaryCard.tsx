@@ -96,7 +96,11 @@ const TripSummaryCard: React.FC<TripSummaryCardProps> = ({
               </div>
             )}
             <p className="font-bold text-xl text-green-600 mt-2">
-              {formatCurrency(Number(train.price?.replace(/[^0-9]/g, '') || 0))}
+              {formatCurrency(
+                typeof train.price === 'string' 
+                  ? Number(train.price.replace(/[^0-9]/g, ''))
+                  : Number(train.price || 0)
+              )}
             </p>
           </div>
         )}
