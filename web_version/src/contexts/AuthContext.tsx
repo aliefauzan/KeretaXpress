@@ -221,6 +221,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user: data.user
         };
       } else {
+        // Handle validation errors (Laravel/Express format)
+        if (data.errors) {
+          // Get first error from the errors object
+          const firstErrorField = Object.keys(data.errors)[0];
+          const firstErrorMessage = Array.isArray(data.errors[firstErrorField]) 
+            ? data.errors[firstErrorField][0] 
+            : data.errors[firstErrorField];
+          
+          return {
+            success: false,
+            message: firstErrorMessage || 'Login gagal'
+          };
+        }
+        
         return {
           success: false,
           message: data.message || 'Login gagal'
@@ -257,6 +271,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           user: data.user
         };
       } else {
+        // Handle validation errors (Laravel/Express format)
+        if (data.errors) {
+          // Get first error from the errors object
+          const firstErrorField = Object.keys(data.errors)[0];
+          const firstErrorMessage = Array.isArray(data.errors[firstErrorField]) 
+            ? data.errors[firstErrorField][0] 
+            : data.errors[firstErrorField];
+          
+          return {
+            success: false,
+            message: firstErrorMessage || 'Registrasi gagal'
+          };
+        }
+        
         return {
           success: false,
           message: data.message || 'Registrasi gagal'
