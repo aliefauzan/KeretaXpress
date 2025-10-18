@@ -8,6 +8,7 @@ const router = express.Router();
 router.post('/create', authMiddleware, PaymentController.createPayment);
 router.post('/notification', PaymentController.handleNotification); // Webhook from Midtrans (no auth)
 router.get('/status/:transaction_id', authMiddleware, PaymentController.checkStatus);
+router.get('/details/:transaction_id', authMiddleware, PaymentController.getPaymentDetails);
 
 export default router;
 
