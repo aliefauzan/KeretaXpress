@@ -126,21 +126,6 @@ class Booking {
     }
   }
 
-  static async updatePaymentData(transactionId, paymentData) {
-    try {
-      const result = await pool.query(
-        `UPDATE bookings 
-         SET payment_data = $1, updated_at = NOW()
-         WHERE transaction_id = $2
-         RETURNING *`,
-        [JSON.stringify(paymentData), transactionId]
-      );
-      return result.rows[0];
-    } catch (error) {
-      throw error;
-    }
-  }
-
   static async isSeatBooked(trainId, travelDate, seatNumber) {
     try {
       const result = await pool.query(
