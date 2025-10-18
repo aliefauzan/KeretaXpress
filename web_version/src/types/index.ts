@@ -61,7 +61,6 @@ export interface Booking {
   passengerId: string; // From backend
   // passengerDob: string; // From backend - ensure these are needed/provided
   // passengerGender: string; // From backend - ensure these are needed/provided
-  payment_proof?: string; // From backend
   // booking_date: string; // From backend - if different from created_at
   created_at: string; // From backend
   updated_at: string; // From backend
@@ -111,4 +110,54 @@ export interface BookingDisplay {
 export interface AuthResponse {
   user: User;
   token: string;
+}
+
+export interface Payment {
+  id: number;
+  booking_id: number;
+  transaction_id?: string; // From joined bookings table
+  payment_type: string;
+  payment_method: string;
+  amount: number;
+  status: string;
+  order_id: string;
+  payment_data?: {
+    qr_code_url?: string;
+    deeplink?: string;
+    payment_type?: string;
+    expiry_time?: string;
+    transaction_id?: string;
+    order_id?: string;
+    transaction_time?: string;
+    transaction_status?: string;
+    actions?: any[];
+    [key: string]: any;
+  };
+  paid_at?: string;
+  expired_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentResponse {
+  transaction_id: string;
+  snap_token?: string;
+  redirect_url?: string;
+  booking: any;
+  existing_payment?: boolean;
+  use_core_api?: boolean;
+  payment_type?: string;
+  qr_code_url?: string;
+  deeplink?: string;
+  expiry_time?: string;
+  payment_code?: string;
+  va_numbers?: any[];
+  bill_key?: string;
+  biller_code?: string;
+  permata_va_number?: string;
+  pdf_url?: string;
+  transaction_time?: string;
+  midtrans_status?: string;
+  payment_data?: any;
+  message?: string;
 }
