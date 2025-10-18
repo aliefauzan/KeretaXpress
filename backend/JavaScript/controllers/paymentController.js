@@ -1,4 +1,5 @@
 import Booking from '../models/Booking.js';
+import Payment from '../models/Payment.js';
 import User from '../models/User.js';
 import supabaseService from '../services/supabaseService.js';
 import midtransService from '../services/midtransService.js';
@@ -37,6 +38,9 @@ class PaymentController {
         });
       }
 
+      // Check existing payment in our database
+      let existingPayment = await Payment.findByTransactionId(transaction_id);
+      
       // Check existing payment status from Midtrans
       let existingTransaction = null;
       
@@ -48,25 +52,26 @@ class PaymentController {
         if (existingTransaction.transaction_status === 'settlement' || 
             existingTransaction.transaction_status === 'capture') {
           await Booking.updateStatus(transaction_id, 'paid');
+          if (existingPayment) {
+            await Payment.updateStatus(transaction_id, 'success', new Date());
+          }
           return res.status(400).json({ 
             message: 'Pembayaran sudah berhasil',
             status: 'paid'
           });
         }
         
-        // If payment is PENDING, return existing details (including stored QR if available)
+        // If payment is PENDING, return existing details
         if (existingTransaction.transaction_status === 'pending') {
-          const paymentType = existingTransaction.payment_type;
-          
           console.log('✅ Payment is pending, returning existing payment details');
           
           // Parse stored payment_data if it exists
           let paymentData = null;
-          if (booking.payment_data) {
+          if (existingPayment && existingPayment.payment_data) {
             try {
-              paymentData = typeof booking.payment_data === 'string' 
-                ? JSON.parse(booking.payment_data) 
-                : booking.payment_data;
+              paymentData = typeof existingPayment.payment_data === 'string' 
+                ? JSON.parse(existingPayment.payment_data) 
+                : existingPayment.payment_data;
             } catch (e) {
               console.error('Error parsing payment_data:', e);
             }
@@ -89,7 +94,7 @@ class PaymentController {
             transaction_time: existingTransaction.transaction_time,
             expiry_time: existingTransaction.expiry_time,
             midtrans_status: existingTransaction.transaction_status,
-            payment_data: paymentData, // Include stored QR URLs, deeplinks, etc.
+            payment_data: paymentData,
             message: 'Pembayaran sedang menunggu. Silakan selesaikan pembayaran Anda dengan metode yang sudah dipilih.'
           });
         }
@@ -100,6 +105,9 @@ class PaymentController {
             existingTransaction.transaction_status === 'expire') {
           console.log(`⚠️ Previous payment was ${existingTransaction.transaction_status}, will create new payment`);
           await Booking.updateStatus(transaction_id, 'cancelled');
+          if (existingPayment) {
+            await Payment.updateStatus(transaction_id, 'cancelled');
+          }
         }
       } catch (error) {
         console.log('ℹ️ No existing transaction found in Midtrans, will create new one');
@@ -115,13 +123,11 @@ class PaymentController {
       );
 
       // Determine if we should use Core API for QR payments
-      // Core API is used for QRIS/GoPay/ShopeePay to get QR code URL
       const shouldUseCoreApi = use_qr_payment === true;
 
       if (shouldUseCoreApi) {
         console.log('🔷 Using Core API for QR payment (QRIS/GoPay/ShopeePay)');
         
-        // Default to QRIS, but could be changed based on user selection
         const paymentType = 'qris'; 
         
         // Create transaction using Core API
@@ -142,7 +148,7 @@ class PaymentController {
           deeplink = deeplinkAction?.url;
         }
 
-        // Store payment data in database for later retrieval
+        // Store payment data in payments table
         const paymentDataToStore = {
           qr_code_url: qrCodeUrl,
           deeplink: deeplink,
@@ -151,12 +157,27 @@ class PaymentController {
           order_id: coreApiResponse.order_id,
           transaction_time: coreApiResponse.transaction_time,
           transaction_status: coreApiResponse.transaction_status,
-          expiry_time: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // QR expires in 15 minutes
+          expiry_time: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
           actions: coreApiResponse.actions
         };
 
-        await Booking.updatePaymentData(transaction_id, paymentDataToStore);
-        console.log('✅ Stored payment data with QR URL in database');
+        // Create or update payment record
+        if (existingPayment) {
+          await Payment.updatePaymentData(transaction_id, paymentDataToStore);
+        } else {
+          await Payment.create({
+            bookingId: booking.id,
+            paymentType: paymentType,
+            paymentMethod: paymentType,
+            amount: booking.total_price,
+            status: 'pending',
+            orderId: transaction_id,
+            paymentData: paymentDataToStore,
+            expiredAt: paymentDataToStore.expiry_time
+          });
+        }
+        
+        console.log('✅ Stored payment data with QR URL in payments table');
 
         // Update booking status to pending
         await Booking.updateStatus(transaction_id, 'pending');
@@ -178,6 +199,19 @@ class PaymentController {
       // For non-QR payments, use Snap API (Credit Card, VA, etc.)
       console.log('📱 Using Snap API for standard payment');
       const snapTransaction = await midtransService.createTransaction(transactionPayload);
+
+      // Create payment record
+      if (!existingPayment) {
+        await Payment.create({
+          bookingId: booking.id,
+          paymentType: 'snap',
+          paymentMethod: booking.payment_method || 'snap',
+          amount: booking.total_price,
+          status: 'pending',
+          orderId: transaction_id,
+          paymentData: { snap_token: snapTransaction.token }
+        });
+      }
 
       // Update booking status to pending
       await Booking.updateStatus(transaction_id, 'pending');
@@ -225,11 +259,38 @@ class PaymentController {
 
       // Map Midtrans status to our status
       const newStatus = midtransService.mapTransactionStatus(transaction_status, fraud_status);
+      
+      // Determine paid_at timestamp
+      const paidAt = (newStatus === 'success' || newStatus === 'settlement' || newStatus === 'paid') 
+        ? new Date() 
+        : null;
 
-      // Update booking status
-      await Booking.updateStatus(order_id, newStatus);
+      // Update payment status in payments table
+      const payment = await Payment.findByOrderId(order_id);
+      if (payment) {
+        await Payment.updateStatus(order_id, newStatus, paidAt);
+      } else {
+        // Create payment record if it doesn't exist (shouldn't happen but just in case)
+        await Payment.create({
+          bookingId: booking.id,
+          paymentType: transaction_status === 'capture' ? 'credit_card' : 'other',
+          paymentMethod: notification.payment_type || 'unknown',
+          amount: booking.total_price,
+          status: newStatus,
+          orderId: order_id,
+          paymentData: notification,
+          paidAt: paidAt
+        });
+      }
 
-      console.log(`✅ Booking ${order_id} status updated to: ${newStatus}`);
+      // Update booking status (only if payment is successful)
+      if (paidAt) {
+        await Booking.updateStatus(order_id, 'paid');
+      } else if (newStatus === 'cancelled' || newStatus === 'expired' || newStatus === 'failed') {
+        await Booking.updateStatus(order_id, newStatus);
+      }
+
+      console.log(`✅ Payment ${order_id} status updated to: ${newStatus}`);
 
       return res.status(200).json({ 
         message: 'Notification processed successfully',
@@ -267,10 +328,25 @@ class PaymentController {
         midtransStatus.transaction_status,
         midtransStatus.fraud_status
       );
+      
+      // Determine paid_at
+      const paidAt = (newStatus === 'success' || newStatus === 'settlement' || newStatus === 'paid') 
+        ? new Date() 
+        : null;
+
+      // Update payment status if changed
+      const payment = await Payment.findByOrderId(transaction_id);
+      if (payment && payment.status !== newStatus) {
+        await Payment.updateStatus(transaction_id, newStatus, paidAt);
+      }
 
       // Update booking if status changed
       if (booking.status !== newStatus) {
-        await Booking.updateStatus(transaction_id, newStatus);
+        if (paidAt) {
+          await Booking.updateStatus(transaction_id, 'paid');
+        } else if (newStatus === 'cancelled' || newStatus === 'expired' || newStatus === 'failed') {
+          await Booking.updateStatus(transaction_id, newStatus);
+        }
       }
 
       return res.status(200).json({
@@ -278,11 +354,68 @@ class PaymentController {
         status: newStatus,
         midtrans_status: midtransStatus.transaction_status,
         payment_type: midtransStatus.payment_type,
-        transaction_time: midtransStatus.transaction_time
+        transaction_time: midtransStatus.transaction_time,
+        payment: payment
       });
     } catch (error) {
       console.error('Check status error:', error);
       return res.status(500).json({ message: 'Failed to check payment status' });
+    }
+  }
+  
+  // Get payment details for a transaction
+  static async getPaymentDetails(req, res) {
+    try {
+      const { transaction_id } = req.params;
+      const user = req.user;
+
+      // Find booking
+      const booking = await Booking.findByTransactionId(transaction_id);
+      if (!booking) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      // Check if booking belongs to user
+      if (booking.user_uuid !== user.uuid) {
+        return res.status(403).json({ message: 'Unauthorized' });
+      }
+
+      // Find payment record
+      const payment = await Payment.findByTransactionId(transaction_id);
+      if (!payment) {
+        return res.status(404).json({ message: 'Payment not found' });
+      }
+
+      // Parse payment_data if it's a string
+      let paymentData = null;
+      if (payment.payment_data) {
+        try {
+          paymentData = typeof payment.payment_data === 'string' 
+            ? JSON.parse(payment.payment_data) 
+            : payment.payment_data;
+        } catch (e) {
+          console.error('Error parsing payment_data:', e);
+        }
+      }
+
+      return res.status(200).json({
+        id: payment.id,
+        booking_id: payment.booking_id,
+        transaction_id: booking.transaction_id,
+        payment_type: payment.payment_type,
+        payment_method: payment.payment_method,
+        amount: payment.amount,
+        status: payment.status,
+        order_id: payment.order_id,
+        payment_data: paymentData,
+        paid_at: payment.paid_at,
+        expired_at: payment.expired_at,
+        created_at: payment.created_at,
+        updated_at: payment.updated_at
+      });
+    } catch (error) {
+      console.error('Get payment details error:', error);
+      return res.status(500).json({ message: 'Failed to get payment details' });
     }
   }
 }
