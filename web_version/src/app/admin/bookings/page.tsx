@@ -41,7 +41,7 @@ export default function BookingsPage() {
       if (showLoader) setIsRefreshing(true);
       const token = localStorage.getItem('adminToken');
       const validPage = !isNaN(currentPage) && currentPage > 0 ? currentPage : 1;
-      let url = `http://localhost:3005/api/admin/bookings?page=${validPage}&limit=10`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/admin/bookings?page=${validPage}&limit=10`;
       if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }
@@ -87,7 +87,7 @@ export default function BookingsPage() {
     const token = localStorage.getItem('adminToken');
     try {
       const response = await fetch(
-        `http://localhost:3005/api/admin/payments/${selectedBooking.booking_code}/confirm`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/payments/${selectedBooking.booking_code}/confirm`,
         {
           method: 'POST',
           headers: {

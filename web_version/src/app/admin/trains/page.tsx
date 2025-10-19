@@ -51,7 +51,7 @@ export default function TrainsPage() {
   const fetchTrains = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:3005/api/admin/trains', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/trains`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (response.ok) {
@@ -67,7 +67,11 @@ export default function TrainsPage() {
 
   const fetchStations = async () => {
     try {
-      const response = await fetch('http://localhost:3005/api/stations');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/stations`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setStations(data);
@@ -83,8 +87,8 @@ export default function TrainsPage() {
 
     try {
       const url = editingTrain
-        ? `http://localhost:3005/api/admin/trains/${editingTrain.id}`
-        : 'http://localhost:3005/api/admin/trains';
+        ? `${process.env.NEXT_PUBLIC_API_URL}/admin/trains/${editingTrain.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/admin/trains`;
 
       const response = await fetch(url, {
         method: editingTrain ? 'PUT' : 'POST',
@@ -136,7 +140,7 @@ export default function TrainsPage() {
 
     const token = localStorage.getItem('adminToken');
     try {
-      const response = await fetch(`http://localhost:3005/api/admin/trains/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/trains/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });

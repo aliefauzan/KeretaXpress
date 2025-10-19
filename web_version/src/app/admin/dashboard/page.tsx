@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   const fetchStatistics = async () => {
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await fetch('http://localhost:3005/api/admin/bookings/statistics', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/bookings/statistics`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
