@@ -22,7 +22,8 @@ router.post('/trains',
       .withMessage('Departure time must be in HH:MM:SS format'),
     body('arrival_time').matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/)
       .withMessage('Arrival time must be in HH:MM:SS format'),
-    body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number')
+    body('price').isFloat({ min: 0, max: 9999999999.99 })
+      .withMessage('Price must be between 0 and 9,999,999,999.99')
   ],
   AdminController.createTrain
 );
