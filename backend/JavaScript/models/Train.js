@@ -38,6 +38,9 @@ class Train {
 
   static async search({ departureStationId, arrivalStationId, date }) {
     try {
+      // Note: departure_time and arrival_time are TIME type (not TIMESTAMP)
+      // The date parameter is for the travel_date in bookings, not in trains table
+      // Trains have recurring schedules (same time every day)
       const result = await pool.query(
         `SELECT t.*, 
                 ds.name as departure_station_name, ds.city as departure_city,
@@ -47,10 +50,9 @@ class Train {
          JOIN stations as_station ON t.arrival_station_id = as_station.id
          WHERE t.departure_station_id = $1 
            AND t.arrival_station_id = $2
-           AND DATE(t.departure_time) = $3
            AND t.available_seats > 0
          ORDER BY t.departure_time ASC`,
-        [departureStationId, arrivalStationId, date]
+        [departureStationId, arrivalStationId]
       );
       return result.rows;
     } catch (error) {
