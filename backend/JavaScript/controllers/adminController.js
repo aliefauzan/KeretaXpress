@@ -43,13 +43,25 @@ class AdminController {
         });
       }
 
+      // Calculate duration in minutes
+      const calculateDuration = (start, end) => {
+        const [startHours, startMinutes] = start.split(':').map(Number);
+        const [endHours, endMinutes] = end.split(':').map(Number);
+        let duration = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+        // Handle overnight trips (if arrival is earlier than departure)
+        if (duration < 0) duration += 24 * 60;
+        return duration;
+      };
+
+      const duration_minutes = calculateDuration(departure_time, arrival_time);
+
       const result = await pool.query(
         `INSERT INTO trains (
           name, operator, class_type, available_seats, 
           departure_station_id, arrival_station_id, 
-          departure_time, arrival_time, price,
+          departure_time, arrival_time, duration_minutes, price,
           created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
         RETURNING *`,
         [
           name,
@@ -60,6 +72,7 @@ class AdminController {
           arrival_station_id,
           departure_time,
           arrival_time,
+          duration_minutes,
           price
         ]
       );
@@ -75,6 +88,26 @@ class AdminController {
       });
     } catch (error) {
       console.error('Create train error:', error);
+      
+      // Handle specific database errors
+      if (error.code === '22003') {
+        return res.status(422).json({ 
+          message: 'Price value is too large. Maximum allowed is 9,999,999,999.99',
+          errors: {
+            price: ['Price exceeds maximum allowed value']
+          }
+        });
+      }
+      
+      if (error.code === '23503') {
+        return res.status(422).json({ 
+          message: 'Invalid station ID provided',
+          errors: {
+            station: ['Departure or arrival station does not exist']
+          }
+        });
+      }
+      
       return res.status(500).json({ 
         message: 'Failed to create train',
         error: error.message 
@@ -151,6 +184,25 @@ class AdminController {
         updates.push(`arrival_time = $${paramCount++}`);
         values.push(arrival_time);
       }
+      
+      // Recalculate duration if times are updated
+      if (departure_time !== undefined || arrival_time !== undefined) {
+        const depTime = departure_time || existingTrain.departure_time;
+        const arrTime = arrival_time || existingTrain.arrival_time;
+        
+        const calculateDuration = (start, end) => {
+          const [startHours, startMinutes] = start.split(':').map(Number);
+          const [endHours, endMinutes] = end.split(':').map(Number);
+          let duration = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+          if (duration < 0) duration += 24 * 60;
+          return duration;
+        };
+        
+        const duration_minutes = calculateDuration(depTime, arrTime);
+        updates.push(`duration_minutes = $${paramCount++}`);
+        values.push(duration_minutes);
+      }
+      
       if (price !== undefined) {
         updates.push(`price = $${paramCount++}`);
         values.push(price);
@@ -182,6 +234,26 @@ class AdminController {
       });
     } catch (error) {
       console.error('Update train error:', error);
+      
+      // Handle specific database errors
+      if (error.code === '22003') {
+        return res.status(422).json({ 
+          message: 'Price value is too large. Maximum allowed is 9,999,999,999.99',
+          errors: {
+            price: ['Price exceeds maximum allowed value']
+          }
+        });
+      }
+      
+      if (error.code === '23503') {
+        return res.status(422).json({ 
+          message: 'Invalid station ID provided',
+          errors: {
+            station: ['Departure or arrival station does not exist']
+          }
+        });
+      }
+      
       return res.status(500).json({ 
         message: 'Failed to update train',
         error: error.message 
@@ -226,6 +298,14 @@ class AdminController {
       });
     } catch (error) {
       console.error('Delete train error:', error);
+      
+      // Handle foreign key constraint errors
+      if (error.code === '23503') {
+        return res.status(400).json({ 
+          message: 'Cannot delete train. It is referenced by existing bookings or other records.'
+        });
+      }
+      
       return res.status(500).json({ 
         message: 'Failed to delete train',
         error: error.message 

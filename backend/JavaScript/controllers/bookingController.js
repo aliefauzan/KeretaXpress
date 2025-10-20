@@ -126,11 +126,27 @@ class BookingController {
       await client.query('ROLLBACK');
       console.error('Booking error:', error);
       
+      // Handle specific database errors
+      if (error.code === '23503') {
+        return res.status(404).json({ 
+          message: 'Invalid train or user reference'
+        });
+      }
+      
+      if (error.code === '23505') {
+        return res.status(400).json({ 
+          message: 'Duplicate booking detected. Transaction ID already exists.'
+        });
+      }
+      
       if (error.message === 'No available seats for this train') {
         return res.status(400).json({ message: error.message });
       }
       
-      return res.status(500).json({ message: 'Internal server error' });
+      return res.status(500).json({ 
+        message: 'Failed to create booking. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     } finally {
       client.release();
     }
@@ -169,7 +185,10 @@ class BookingController {
       return res.status(200).json(bookings);
     } catch (error) {
       console.error('Booking history error:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+      return res.status(500).json({ 
+        message: 'Failed to fetch booking history. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -207,8 +226,17 @@ class BookingController {
       return res.status(200).json(updatedBooking);
     } catch (error) {
       console.error('Update booking status error:', error);
+      
+      // Handle specific errors
+      if (error.code === '22P02') {
+        return res.status(400).json({ 
+          message: 'Invalid status value provided'
+        });
+      }
+      
       return res.status(500).json({ 
-        message: 'Internal server error during status update' 
+        message: 'Failed to update booking status. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }

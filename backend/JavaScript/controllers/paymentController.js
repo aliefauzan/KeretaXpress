@@ -224,8 +224,30 @@ class PaymentController {
       });
     } catch (error) {
       console.error('Create payment error:', error);
+      
+      // Handle specific Midtrans errors
+      if (error.message && error.message.includes('Transaction failed')) {
+        return res.status(400).json({ 
+          message: 'Payment transaction failed. Please try again.',
+          error: error.message
+        });
+      }
+      
+      if (error.message && error.message.includes('order_id')) {
+        return res.status(400).json({ 
+          message: 'Invalid transaction ID format'
+        });
+      }
+      
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return res.status(503).json({ 
+          message: 'Payment gateway is temporarily unavailable. Please try again later.'
+        });
+      }
+      
       return res.status(500).json({ 
-        message: error.message || 'Failed to create payment transaction' 
+        message: 'Failed to create payment transaction. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -299,7 +321,12 @@ class PaymentController {
       });
     } catch (error) {
       console.error('❌ Handle notification error:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+      
+      // Log but still return 200 to Midtrans to prevent retries
+      return res.status(200).json({ 
+        message: 'Notification received but processing failed',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 
@@ -359,7 +386,23 @@ class PaymentController {
       });
     } catch (error) {
       console.error('Check status error:', error);
-      return res.status(500).json({ message: 'Failed to check payment status' });
+      
+      if (error.message && error.message.includes('404')) {
+        return res.status(404).json({ 
+          message: 'Transaction not found in payment gateway'
+        });
+      }
+      
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return res.status(503).json({ 
+          message: 'Payment gateway is temporarily unavailable'
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: 'Failed to check payment status. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
   
@@ -415,7 +458,17 @@ class PaymentController {
       });
     } catch (error) {
       console.error('Get payment details error:', error);
-      return res.status(500).json({ message: 'Failed to get payment details' });
+      
+      if (error.code === '22P02') {
+        return res.status(400).json({ 
+          message: 'Invalid transaction ID format'
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: 'Failed to retrieve payment details. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 }

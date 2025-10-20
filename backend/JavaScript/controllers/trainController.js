@@ -50,8 +50,17 @@ class TrainController {
       return res.status(200).json({ trains });
     } catch (error) {
       console.error('Train search error:', error);
+      
+      // Handle specific database errors
+      if (error.code === '22P02') {
+        return res.status(400).json({ 
+          message: 'Invalid station ID or date format'
+        });
+      }
+      
       return res.status(500).json({ 
-        error: 'An error occurred while searching for trains' 
+        message: 'Failed to search trains. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -72,7 +81,8 @@ class TrainController {
     } catch (error) {
       console.error('All trains fetch error:', error);
       return res.status(500).json({ 
-        error: 'An error occurred while fetching trains' 
+        message: 'Failed to fetch trains. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -93,7 +103,8 @@ class TrainController {
     } catch (error) {
       console.error('Promo trains fetch error:', error);
       return res.status(500).json({ 
-        error: 'An error occurred while fetching promotional trains' 
+        message: 'Failed to fetch promotional trains. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -105,13 +116,21 @@ class TrainController {
       const { date } = req.query;
 
       if (!date) {
-        return res.status(400).json({ error: 'Date is required' });
+        return res.status(400).json({ 
+          message: 'Travel date is required',
+          errors: { date: ['Date parameter is required'] }
+        });
+      }
+      
+      // Validate ID is a number
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid train ID' });
       }
 
       // Check if train exists
       const train = await Train.findById(id);
       if (!train) {
-        return res.status(404).json({ error: 'Train not found' });
+        return res.status(404).json({ message: 'Train not found' });
       }
 
       // Get available seats
@@ -120,8 +139,17 @@ class TrainController {
       return res.status(200).json({ available_seats: availableSeats });
     } catch (error) {
       console.error('Available seats fetch error:', error);
+      
+      // Handle date format errors
+      if (error.message && error.message.includes('date')) {
+        return res.status(400).json({ 
+          message: 'Invalid date format. Use YYYY-MM-DD'
+        });
+      }
+      
       return res.status(500).json({ 
-        error: 'An error occurred while fetching available seats' 
+        message: 'Failed to fetch available seats. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
@@ -130,17 +158,24 @@ class TrainController {
   static async show(req, res) {
     try {
       const { id } = req.params;
+      
+      // Validate ID is a number
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid train ID' });
+      }
+      
       const train = await Train.findById(id);
 
       if (!train) {
-        return res.status(404).json({ error: 'Train not found' });
+        return res.status(404).json({ message: 'Train not found' });
       }
 
       return res.status(200).json(train);
     } catch (error) {
       console.error('Train fetch error:', error);
       return res.status(500).json({ 
-        error: 'An error occurred while fetching train' 
+        message: 'Failed to fetch train details. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
