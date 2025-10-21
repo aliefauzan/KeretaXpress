@@ -31,6 +31,8 @@ export default function TrainsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingTrain, setEditingTrain] = useState<Train | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formData, setFormData] = useState({
     name: '',
     operator: 'PT. KAI',
@@ -83,6 +85,9 @@ export default function TrainsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+    setFieldErrors({});
+    
     const token = localStorage.getItem('adminToken');
 
     try {
@@ -104,18 +109,23 @@ export default function TrainsPage() {
         }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         alert(editingTrain ? 'Train updated successfully!' : 'Train created successfully!');
         setShowModal(false);
         resetForm();
         fetchTrains();
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to save train');
+        // Handle validation errors
+        if (data.errors) {
+          setFieldErrors(data.errors);
+        }
+        setErrorMessage(data.message || 'Failed to save train');
       }
     } catch (error) {
       console.error('Error saving train:', error);
-      alert('Failed to save train');
+      setErrorMessage('Network error. Please check your connection and try again.');
     }
   };
 
@@ -171,6 +181,8 @@ export default function TrainsPage() {
       price: '',
     });
     setEditingTrain(null);
+    setErrorMessage('');
+    setFieldErrors({});
   };
 
   if (isLoading) {
@@ -274,6 +286,33 @@ export default function TrainsPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Error Message Display */}
+              {errorMessage && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">{errorMessage}</h3>
+                      {Object.keys(fieldErrors).length > 0 && (
+                        <div className="mt-2 text-sm text-red-700">
+                          <ul className="list-disc list-inside space-y-1">
+                            {Object.entries(fieldErrors).map(([field, errors]) => (
+                              <li key={field}>
+                                <strong className="capitalize">{field}:</strong> {errors.join(', ')}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Train Name</label>
@@ -350,26 +389,46 @@ export default function TrainsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Departure Time</label>
-                  <input
-                    type="time"
-                    step="1"
-                    value={formData.departure_time}
-                    onChange={(e) => setFormData({ ...formData, departure_time: e.target.value + ':00' })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-sm font-medium mb-1">Departure Time (HH:MM:SS)</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      step="1"
+                      value={formData.departure_time.substring(0, 8)}
+                      onChange={(e) => {
+                        const timeValue = e.target.value;
+                        // Ensure HH:MM:SS format
+                        const formattedTime = timeValue.length === 8 ? timeValue : `${timeValue}:00`;
+                        setFormData({ ...formData, departure_time: formattedTime });
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg pr-12"
+                      required
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
+                      ✓ OK
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Arrival Time</label>
-                  <input
-                    type="time"
-                    step="1"
-                    value={formData.arrival_time}
-                    onChange={(e) => setFormData({ ...formData, arrival_time: e.target.value + ':00' })}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    required
-                  />
+                  <label className="block text-sm font-medium mb-1">Arrival Time (HH:MM:SS)</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      step="1"
+                      value={formData.arrival_time.substring(0, 8)}
+                      onChange={(e) => {
+                        const timeValue = e.target.value;
+                        // Ensure HH:MM:SS format
+                        const formattedTime = timeValue.length === 8 ? timeValue : `${timeValue}:00`;
+                        setFormData({ ...formData, arrival_time: formattedTime });
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg pr-12"
+                      required
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
+                      ✓ OK
+                    </div>
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium mb-1">Price (IDR)</label>
@@ -377,9 +436,20 @@ export default function TrainsPage() {
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className={`w-full px-3 py-2 border rounded-lg ${
+                      fieldErrors.price ? 'border-red-500' : ''
+                    }`}
+                    min="0"
+                    max="9999999999.99"
+                    step="0.01"
                     required
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Maximum: Rp 9,999,999,999.99
+                  </p>
+                  {fieldErrors.price && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.price.join(', ')}</p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-end space-x-3 pt-4">

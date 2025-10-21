@@ -13,21 +13,23 @@ const createTrainFromBooking = (booking: any) => {
   const statusFromServer = booking.status?.toString() || '';
   const displayStatus = statusFromServer === '' ? 'pending' : statusFromServer;
 
-  // Create full datetime strings for compatibility with format functions
-  const fullDepartureDateTime = train.departure_time || new Date().toISOString();
-  const fullArrivalDateTime = train.arrival_time || new Date().toISOString();
+  // departure_time and arrival_time are now TIME (HH:MM:SS), not TIMESTAMP
+  // Use booking.travel_date for date, and train times for time display
+  const travelDate = booking.travel_date || new Date().toISOString();
+  const departureTime = train.departure_time ? train.departure_time.substring(0, 5) : ''; // Get HH:MM
+  const arrivalTime = train.arrival_time ? train.arrival_time.substring(0, 5) : ''; // Get HH:MM
 
   return {
     id: train.id?.toString() || booking.train_id?.toString() || Math.random().toString(),
     name: train.name || '',
     operator: train.operator || '',
     
-    date: fullDepartureDateTime, // For formatDate function
-    time: fullDepartureDateTime, // For formatTime function
+    date: travelDate, // Use booking travel date
+    time: departureTime, // Use train departure time (HH:MM)
     
     departure: departureStation.name || '',
     arrival: arrivalStation.name || '',
-    arrivalTime: fullArrivalDateTime,
+    arrivalTime: arrivalTime,
     duration: train.travel_time || '', 
     classType: train.class_type || '',
     price: train.price?.toString() || '0',

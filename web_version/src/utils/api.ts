@@ -6,33 +6,44 @@ import { formatCurrency } from '@/utils/format';
 const transformTrainData = (train: any): Train => {
   if (!train) return {} as Train;
   
-  // Format date and time from departure_time if available
+  // Format date and time - departure_time and arrival_time are now TIME type (HH:MM:SS)
   let date = '';
   let time = '';
   let arrivalTime = '';
   
   if (train.departure_time) {
-    const departureDateTime = new Date(train.departure_time);
-    date = departureDateTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-    time = departureDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // departure_time is now TIME (HH:MM:SS), just format it
+    time = train.departure_time.substring(0, 5); // Get HH:MM
   }
   
   if (train.arrival_time) {
-    const arrivalDateTime = new Date(train.arrival_time);
-    arrivalTime = arrivalDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // arrival_time is now TIME (HH:MM:SS), just format it
+    arrivalTime = train.arrival_time.substring(0, 5); // Get HH:MM
   }
   
-  // Calculate duration from departure and arrival times or use travel_time if available
+  // Calculate duration from duration_minutes if available, otherwise calculate from times
   let duration = train.travel_time || '';
-  if (!duration && train.departure_time && train.arrival_time) {
-    const departureTime = new Date(train.departure_time).getTime();
-    const arrivalTime = new Date(train.arrival_time).getTime();
-    const durationMinutes = Math.floor((arrivalTime - departureTime) / 60000);
+  if (!duration && train.duration_minutes) {
+    const hours = Math.floor(train.duration_minutes / 60);
+    const minutes = train.duration_minutes % 60;
+    
+    if (hours > 0) {
+      duration = `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
+    } else {
+      duration = `${minutes}m`;
+    }
+  } else if (!duration && train.departure_time && train.arrival_time) {
+    // Fallback: calculate from time strings
+    const [depHour, depMin] = train.departure_time.split(':').map(Number);
+    const [arrHour, arrMin] = train.arrival_time.split(':').map(Number);
+    let durationMinutes = (arrHour * 60 + arrMin) - (depHour * 60 + depMin);
+    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+    
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
     
     if (hours > 0) {
-      duration = `${hours}h ${minutes}m`;
+      duration = `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
     } else {
       duration = `${minutes}m`;
     }
@@ -85,18 +96,18 @@ const transformBookingData = (booking: any): BookingDisplay => {
     date = travelDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   }
   
-  // Format time from train's departure_time if available
+  // Format time - departure_time and arrival_time are now TIME type (HH:MM:SS)
   let time = '';
   let arrivalTime = '';
   
   if (train.departure_time) {
-    const departureDateTime = new Date(train.departure_time);
-    time = departureDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // departure_time is now TIME (HH:MM:SS), just format it
+    time = train.departure_time.substring(0, 5); // Get HH:MM
   }
   
   if (train.arrival_time) {
-    const arrivalDateTime = new Date(train.arrival_time);
-    arrivalTime = arrivalDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // arrival_time is now TIME (HH:MM:SS), just format it
+    arrivalTime = train.arrival_time.substring(0, 5); // Get HH:MM
   }
   
   const statusMap: { [key: string]: string } = {

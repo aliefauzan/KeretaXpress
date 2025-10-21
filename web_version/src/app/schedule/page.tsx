@@ -64,8 +64,9 @@ function SchedulePageContent() {
           classType: train.class_type || '',
           price: train.price ? formatCurrency(parseInt(train.price)) : '',
           seatsLeft: train.available_seats || 0,
-          time: train.departure_time ? new Date(train.departure_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
-          arrivalTime: train.arrival_time ? new Date(train.arrival_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+          // departure_time and arrival_time are now TIME (HH:MM:SS), not TIMESTAMP
+          time: train.departure_time ? train.departure_time.substring(0, 5) : '',
+          arrivalTime: train.arrival_time ? train.arrival_time.substring(0, 5) : '',
           // Preserve raw time fields for format functions
           departure_time: train.departure_time || '',
           arrival_time: train.arrival_time || '',
@@ -74,7 +75,7 @@ function SchedulePageContent() {
           departure: train.departure_station?.name || '',
           arrival: train.arrival_station?.name || '',
           duration: train.duration_minutes ? `${Math.floor(train.duration_minutes / 60)}h ${train.duration_minutes % 60}m` : '',
-          date: train.departure_time ? new Date(train.departure_time).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+          date: '' // Trains don't have specific dates anymore
         }));
         setTrains(transformedTrains);
         setShowAllTrains(true);
@@ -107,8 +108,9 @@ function SchedulePageContent() {
           classType: train.class_type || '',
           price: train.price ? formatCurrency(parseInt(train.price)) : '',
           seatsLeft: train.available_seats || 0,
-          time: train.departure_time ? new Date(train.departure_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
-          arrivalTime: train.arrival_time ? new Date(train.arrival_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
+          // departure_time and arrival_time are now TIME (HH:MM:SS), not TIMESTAMP
+          time: train.departure_time ? train.departure_time.substring(0, 5) : '',
+          arrivalTime: train.arrival_time ? train.arrival_time.substring(0, 5) : '',
           // Preserve raw time fields for format functions
           departure_time: train.departure_time || '',
           arrival_time: train.arrival_time || '',
@@ -117,7 +119,7 @@ function SchedulePageContent() {
           departure: train.departure_station?.name || '',
           arrival: train.arrival_station?.name || '',
           duration: train.duration_minutes ? `${Math.floor(train.duration_minutes / 60)}h ${train.duration_minutes % 60}m` : '',
-          date: train.departure_time ? new Date(train.departure_time).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+          date: formattedDate // Use the search date
         }));
         setTrains(transformedTrains);
         setShowAllTrains(false);

@@ -34,7 +34,16 @@ export default function LoginPage() {
         setError(result.message || 'Login gagal, silakan coba lagi');
       }
     } catch (err: any) {
-      setError('Login gagal, silakan coba lagi');
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.response?.data?.errors) {
+        const firstError = Object.values(err.response.data.errors)[0];
+        setError(Array.isArray(firstError) ? firstError[0] : String(firstError));
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Login gagal, silakan coba lagi');
+      }
     } finally {
       setIsLoading(false);
     }
