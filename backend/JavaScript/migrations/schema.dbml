@@ -1,0 +1,210 @@
+// KeretaXpress Database Schema
+// DBML for dbdiagram.io visualization
+
+Table "users" {
+  "id" BIGSERIAL [pk, increment]
+  "uuid" UUID [unique, not null]
+  "name" VARCHAR(255) [not null]
+  "email" VARCHAR(255) [unique, not null]
+  "email_verified_at" TIMESTAMP
+  "password" VARCHAR(255) [not null]
+  "remember_token" VARCHAR(100)
+  "api_token" VARCHAR(80) [unique]
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "admins" {
+  "id" SERIAL [pk, increment]
+  "uuid" UUID [unique, not null]
+  "name" VARCHAR(255) [not null]
+  "email" VARCHAR(255) [unique, not null]
+  "password" VARCHAR(255) [not null]
+  "role" VARCHAR(50) [not null, default: 'manager']
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "stations" {
+  "id" BIGSERIAL [pk, increment]
+  "code" VARCHAR(10)
+  "name" VARCHAR(255) [not null]
+  "city" VARCHAR(255) [not null]
+  "address" TEXT
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "trains" {
+  "id" BIGSERIAL [pk, increment]
+  "name" VARCHAR(255) [not null]
+  "operator" VARCHAR(255) [not null]
+  "departure_station_id" BIGINT [not null]
+  "arrival_station_id" BIGINT [not null]
+  "departure_time" TIME [not null, note: 'Time in HH:MM:SS format']
+  "arrival_time" TIME [not null, note: 'Time in HH:MM:SS format']
+  "duration_minutes" INTEGER [not null, note: 'Calculated duration between departure and arrival']
+  "class_type" VARCHAR(50) [not null]
+  "price" NUMERIC(12,2) [not null]
+  "available_seats" INTEGER [not null]
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "bookings" {
+  "id" BIGSERIAL [pk, increment]
+  "transaction_id" VARCHAR(255) [unique, not null]
+  "user_uuid" UUID [not null]
+  "train_id" BIGINT [not null]
+  "travel_date" DATE [not null]
+  "passenger_name" VARCHAR(255) [not null]
+  "passenger_id_number" VARCHAR(255) [not null]
+  "passenger_dob" DATE [not null]
+  "passenger_gender" VARCHAR(10) [not null]
+  "seat_number" VARCHAR(10)
+  "status" VARCHAR(50) [not null, default: 'pending']
+  "payment_method" VARCHAR(50) [not null, default: 'transfer']
+  "payment_proof" VARCHAR(500)
+  "payment_data" JSONB
+  "total_price" NUMERIC(12,2) [not null]
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "booking_history" {
+  "id" SERIAL [pk, increment]
+  "booking_id" INTEGER
+  "old_status" VARCHAR(50)
+  "new_status" VARCHAR(50) [not null]
+  "changed_by_user_uuid" UUID
+  "changed_by_admin_id" INTEGER
+  "reason" TEXT
+  "metadata" JSONB
+  "created_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "payments" {
+  "id" BIGSERIAL [pk, increment]
+  "uuid" UUID [unique, not null]
+  "booking_id" BIGINT [not null]
+  "transaction_id" VARCHAR(255) [unique, not null]
+  "amount" NUMERIC(10,2) [not null]
+  "payment_method" VARCHAR(50) [not null]
+  "payment_type" VARCHAR(50) [not null]
+  "status" VARCHAR(50) [not null, default: 'pending']
+  "payment_data" JSONB
+  "order_id" VARCHAR(255)
+  "gross_amount" NUMERIC(10,2)
+  "paid_at" TIMESTAMP
+  "expired_at" TIMESTAMP
+  "metadata" JSONB
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "notifications" {
+  "id" BIGSERIAL [pk, increment]
+  "uuid" UUID [unique, not null]
+  "type" VARCHAR(255) [not null]
+  "notifiable_type" VARCHAR(255) [not null]
+  "notifiable_id" BIGINT [not null]
+  "data" JSONB [not null]
+  "read_at" TIMESTAMP
+  "created_at" TIMESTAMP [default: `NOW()`]
+  "updated_at" TIMESTAMP [default: `NOW()`]
+}
+
+Table "password_reset_tokens" {
+  "email" VARCHAR(255) [pk]
+  "token" VARCHAR(255) [not null]
+  "created_at" TIMESTAMP
+}
+
+Table "personal_access_tokens" {
+  "id" BIGSERIAL [pk, increment]
+  "tokenable_type" VARCHAR(255) [not null]
+  "tokenable_id" BIGINT [not null]
+  "name" VARCHAR(255) [not null]
+  "token" VARCHAR(64) [unique, not null]
+  "abilities" TEXT
+  "last_used_at" TIMESTAMP
+  "expires_at" TIMESTAMP
+  "created_at" TIMESTAMP
+  "updated_at" TIMESTAMP
+}
+
+Table "sessions" {
+  "id" VARCHAR(255) [pk]
+  "user_id" BIGINT
+  "ip_address" VARCHAR(45)
+  "user_agent" TEXT
+  "payload" TEXT [not null]
+  "last_activity" INTEGER [not null]
+}
+
+Table "cache" {
+  "key" VARCHAR(255) [pk]
+  "value" TEXT [not null]
+  "expiration" INTEGER [not null]
+}
+
+Table "cache_locks" {
+  "key" VARCHAR(255) [pk]
+  "owner" VARCHAR(255) [not null]
+  "expiration" INTEGER [not null]
+}
+
+Table "jobs" {
+  "id" BIGSERIAL [pk, increment]
+  "queue" VARCHAR(255) [not null]
+  "payload" TEXT [not null]
+  "attempts" SMALLINT [not null]
+  "reserved_at" INTEGER
+  "available_at" INTEGER [not null]
+  "created_at" INTEGER [not null]
+}
+
+Table "job_batches" {
+  "id" VARCHAR(255) [pk]
+  "name" VARCHAR(255) [not null]
+  "total_jobs" INTEGER [not null]
+  "pending_jobs" INTEGER [not null]
+  "failed_jobs" INTEGER [not null]
+  "failed_job_ids" TEXT [not null]
+  "options" TEXT
+  "cancelled_at" INTEGER
+  "created_at" INTEGER [not null]
+  "finished_at" INTEGER
+}
+
+Table "failed_jobs" {
+  "id" BIGSERIAL [pk, increment]
+  "uuid" VARCHAR(255) [unique, not null]
+  "connection" TEXT [not null]
+  "queue" TEXT [not null]
+  "payload" TEXT [not null]
+  "exception" TEXT [not null]
+  "failed_at" TIMESTAMP [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table "migrations" {
+  "id" SERIAL [pk, increment]
+  "migration" VARCHAR(255) [not null]
+  "batch" INTEGER [not null]
+}
+
+Ref:"stations"."id" < "trains"."departure_station_id"
+
+Ref:"stations"."id" < "trains"."arrival_station_id"
+
+Ref:"users"."uuid" < "bookings"."user_uuid"
+
+Ref:"trains"."id" < "bookings"."train_id"
+
+Ref:"bookings"."id" < "booking_history"."booking_id"
+
+Ref:"users"."uuid" < "booking_history"."changed_by_user_uuid"
+
+Ref:"admins"."id" < "booking_history"."changed_by_admin_id"
+
+Ref:"bookings"."id" < "payments"."booking_id"
