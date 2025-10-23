@@ -240,6 +240,43 @@ class BookingController {
       });
     }
   }
+
+  // Cancel booking (Customer)
+  static async cancelBooking(req, res) {
+    try {
+      const { transactionId } = req.params;
+      const userUuid = req.user.uuid || req.user.id;
+
+      // Check if booking can be cancelled
+      const checkResult = await Booking.canBeCancelled(transactionId, userUuid);
+      
+      if (!checkResult.canCancel) {
+        return res.status(403).json({ 
+          message: checkResult.reason 
+        });
+      }
+
+      // Cancel the booking
+      const cancelledBooking = await Booking.cancel(transactionId, 'customer');
+      
+      if (!cancelledBooking) {
+        return res.status(404).json({ 
+          message: 'Booking tidak ditemukan atau tidak dapat dibatalkan' 
+        });
+      }
+
+      return res.status(200).json({ 
+        message: 'Booking berhasil dibatalkan',
+        booking: cancelledBooking 
+      });
+    } catch (error) {
+      console.error('Cancel booking error:', error);
+      return res.status(500).json({ 
+        message: 'Gagal membatalkan booking. Silakan coba lagi.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 export default BookingController;
