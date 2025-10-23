@@ -13,5 +13,6 @@ const router = express.Router();
 router.post('/', authMiddleware, createBookingValidation, BookingController.book);
 router.get('/history', authMiddleware, bookingHistoryValidation, BookingController.history);
 router.put('/:transactionId/status', authMiddleware, updateBookingStatusValidation, BookingController.updateStatus);
+router.post('/:transactionId/cancel', authMiddleware, BookingController.cancelBooking);
 
 export default router;
