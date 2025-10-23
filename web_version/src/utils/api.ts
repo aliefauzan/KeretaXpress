@@ -310,6 +310,15 @@ export const bookingService = {
       console.error('Error updating booking status:', error);
       throw error;
     }
+  },
+  
+  cancelBooking: async (transactionId: string) => {
+    try {
+      return await apiClient.post(`/bookings/${transactionId}/cancel`);
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      throw error;
+    }
   }
 };
 
