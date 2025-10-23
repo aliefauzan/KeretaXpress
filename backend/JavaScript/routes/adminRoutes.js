@@ -73,4 +73,14 @@ router.post('/payments/:transaction_id/confirm',
   AdminController.confirmPayment
 );
 
+// Cancel booking (superadmin and manager only)
+router.post('/bookings/:transactionId/cancel',
+  adminAuthMiddleware,
+  checkAdminRole(['superadmin', 'manager']),
+  [
+    body('reason').optional().isString().withMessage('Reason must be a string')
+  ],
+  AdminController.cancelBooking
+);
+
 export default router;
