@@ -576,6 +576,46 @@ class AdminController {
       });
     }
   }
+
+  // Cancel booking (Admin)
+  static async cancelBooking(req, res) {
+    try {
+      const { transactionId } = req.params;
+      const { reason } = req.body;
+
+      // Check if booking can be cancelled (no user restriction for admin)
+      const checkResult = await Booking.canBeCancelled(transactionId);
+      
+      if (!checkResult.canCancel) {
+        return res.status(403).json({ 
+          message: checkResult.reason 
+        });
+      }
+
+      // Cancel the booking
+      const cancelledBooking = await Booking.cancel(transactionId, 'admin');
+      
+      if (!cancelledBooking) {
+        return res.status(404).json({ 
+          message: 'Booking tidak ditemukan atau tidak dapat dibatalkan' 
+        });
+      }
+
+      // Log admin action
+      console.log(`✅ Admin ${req.admin.email} cancelled booking: ${transactionId}${reason ? ` - Reason: ${reason}` : ''}`);
+
+      return res.status(200).json({ 
+        message: 'Booking berhasil dibatalkan oleh admin',
+        booking: cancelledBooking 
+      });
+    } catch (error) {
+      console.error('Admin cancel booking error:', error);
+      return res.status(500).json({ 
+        message: 'Gagal membatalkan booking. Silakan coba lagi.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 export default AdminController;
