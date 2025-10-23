@@ -1,26 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
 import { formatCurrency, formatDate, formatTime } from '@/utils/format';
-import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
 import { Train } from '@/types';
+import { bookingService } from '@/utils/api';
 
 interface BookingCardProps {
   booking: any;
   train: Train;
   displayStatus: string;
   isLoadingAction: boolean;
+  onCancelSuccess?: () => void;
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({ 
   booking, 
   train, 
   displayStatus, 
-  isLoadingAction 
+  isLoadingAction,
+  onCancelSuccess 
 }) => {
   const router = useRouter();
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleCancelBooking = async () => {
+    if (!booking.transaction_id) return;
+    
+    setIsCancelling(true);
+    try {
+      await bookingService.cancelBooking(booking.transaction_id);
+      setShowCancelConfirm(false);
+      if (onCancelSuccess) {
+        onCancelSuccess();
+      }
+      // Optionally show success message
+      alert('Booking berhasil dibatalkan');
+    } catch (error: any) {
+      console.error('Error cancelling booking:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Gagal membatalkan booking';
+      alert(errorMessage);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -132,14 +158,25 @@ const BookingCard: React.FC<BookingCardProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-3 border-t border-gray-200">
           {displayStatus.toLowerCase() === 'pending' && (
-            <Button 
-              onClick={() => router.push(`/payment?bookingId=${booking.transaction_id}`)} 
-              variant="primary"
-              size="sm"
-              disabled={isLoadingAction}
-            >
-              Lanjutkan Pembayaran
-            </Button>
+            <>
+              <Button 
+                onClick={() => setShowCancelConfirm(true)} 
+                variant="outline"
+                size="sm"
+                disabled={isLoadingAction || isCancelling}
+                className="border-red-500 text-red-500 hover:bg-red-50"
+              >
+                <FiX className="mr-1" /> Batalkan
+              </Button>
+              <Button 
+                onClick={() => router.push(`/payment?bookingId=${booking.transaction_id}`)} 
+                variant="primary"
+                size="sm"
+                disabled={isLoadingAction}
+              >
+                Lanjutkan Pembayaran
+              </Button>
+            </>
           )}
           {(displayStatus.toLowerCase() === 'confirmed' || displayStatus.toLowerCase() === 'paid') && (
             <Button 
@@ -152,6 +189,40 @@ const BookingCard: React.FC<BookingCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Konfirmasi Pembatalan</h3>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin membatalkan booking ini?
+              <br />
+              <span className="font-medium text-gray-900">ID: {booking.transaction_id}</span>
+            </p>
+            <div className="flex space-x-3">
+              <Button
+                onClick={() => setShowCancelConfirm(false)}
+                variant="outline"
+                size="md"
+                disabled={isCancelling}
+                className="flex-1"
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={handleCancelBooking}
+                variant="primary"
+                size="md"
+                disabled={isCancelling}
+                className="flex-1 bg-red-600 hover:bg-red-700"
+              >
+                {isCancelling ? 'Membatalkan...' : 'Ya, Batalkan'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -43,9 +43,10 @@ const createTrainFromBooking = (booking: any) => {
 interface BookingListProps {
   bookings: any[];
   isLoadingAction: boolean;
+  onCancelSuccess?: () => void;
 }
 
-const BookingList: React.FC<BookingListProps> = ({ bookings, isLoadingAction }) => {
+const BookingList: React.FC<BookingListProps> = ({ bookings, isLoadingAction, onCancelSuccess }) => {
   return (
     <div className="space-y-6">
       {bookings.map((booking) => {
@@ -63,6 +64,7 @@ const BookingList: React.FC<BookingListProps> = ({ bookings, isLoadingAction }) 
             train={train}
             displayStatus={displayStatus}
             isLoadingAction={isLoadingAction}
+            onCancelSuccess={onCancelSuccess}
           />
         );
       })}
