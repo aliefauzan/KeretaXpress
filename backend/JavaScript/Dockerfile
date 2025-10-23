@@ -1,5 +1,4 @@
-# Use official Node.js LTS (Long Term Support) image
-FROM node:20-alpine
+FROM node:20-slim
 
 # Install system dependencies for better performance and security
 # RUN apk add --no-cache \
