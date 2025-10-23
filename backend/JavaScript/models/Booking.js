@@ -137,6 +137,64 @@ class Booking {
       throw error;
     }
   }
+
+  static async cancel(transactionId, cancelledBy = 'customer') {
+    try {
+      const result = await pool.query(
+        `UPDATE bookings 
+         SET status = 'cancelled', 
+             updated_at = NOW()
+         WHERE transaction_id = $1 AND status NOT IN ('cancelled', 'paid')
+         RETURNING *`,
+        [transactionId]
+      );
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      return result.rows[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  static async canBeCancelled(transactionId, userUuid = null) {
+    try {
+      let query = `
+        SELECT b.*, b.status, b.user_uuid
+        FROM bookings b
+        WHERE b.transaction_id = $1
+      `;
+      const params = [transactionId];
+      
+      if (userUuid) {
+        query += ` AND b.user_uuid = $2`;
+        params.push(userUuid);
+      }
+      
+      const result = await pool.query(query, params);
+      
+      if (result.rows.length === 0) {
+        return { canCancel: false, reason: 'Booking tidak ditemukan' };
+      }
+      
+      const booking = result.rows[0];
+      
+      // Cannot cancel if already paid or already cancelled
+      if (booking.status === 'paid') {
+        return { canCancel: false, reason: 'Booking yang sudah dibayar tidak dapat dibatalkan' };
+      }
+      
+      if (booking.status === 'cancelled') {
+        return { canCancel: false, reason: 'Booking sudah dibatalkan sebelumnya' };
+      }
+      
+      return { canCancel: true, booking };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export default Booking;
