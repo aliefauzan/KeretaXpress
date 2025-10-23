@@ -35,6 +35,9 @@ export default function BookingsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const fetchBookings = async (showLoader = true) => {
     try {
@@ -111,6 +114,42 @@ export default function BookingsPage() {
     } catch (error) {
       console.error('Error confirming payment:', error);
       alert('Failed to confirm payment');
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!selectedBooking) return;
+
+    setIsCancelling(true);
+    const token = localStorage.getItem('adminToken');
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/bookings/${selectedBooking.booking_code}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: cancelReason }),
+        }
+      );
+
+      if (response.ok) {
+        alert('Booking berhasil dibatalkan');
+        setShowCancelModal(false);
+        setSelectedBooking(null);
+        setCancelReason('');
+        fetchBookings();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Gagal membatalkan booking');
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('Gagal membatalkan booking');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -268,17 +307,30 @@ export default function BookingsPage() {
                     {getStatusBadge(booking.status, booking.payment_status)}
                   </td>
                   <td className="px-6 py-4">
-                    {booking.payment_status === 'pending' && booking.status !== 'expired' && (
-                      <button
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowConfirmModal(true);
-                        }}
-                        className="px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
-                      >
-                        Confirm
-                      </button>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {booking.payment_status === 'pending' && booking.status !== 'expired' && booking.status !== 'cancelled' && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowConfirmModal(true);
+                            }}
+                            className="px-4 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowCancelModal(true);
+                            }}
+                            className="px-4 py-2 text-sm font-medium border border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -318,6 +370,76 @@ export default function BookingsPage() {
           </div>
         )}
       </div>
+
+      {/* Cancel Booking Modal */}
+      {showCancelModal && selectedBooking && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full shadow-xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Batalkan Booking</h2>
+              <button 
+                onClick={() => { setShowCancelModal(false); setSelectedBooking(null); setCancelReason(''); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Booking Details */}
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Booking Code:</span>
+                  <span className="font-mono font-semibold text-gray-900">{selectedBooking.booking_code}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Customer:</span>
+                  <span className="font-medium text-gray-900">{selectedBooking.user_name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Train:</span>
+                  <span className="font-medium text-gray-900">{selectedBooking.train_name}</span>
+                </div>
+              </div>
+
+              <p className="text-gray-600 text-sm">
+                Apakah Anda yakin ingin membatalkan booking ini? Tindakan ini tidak dapat dibatalkan.
+              </p>
+
+              {/* Cancel Reason */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Alasan Pembatalan <span className="text-gray-500 font-normal">(Opsional)</span>
+                </label>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Masukkan alasan pembatalan..."
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setShowCancelModal(false); setSelectedBooking(null); setCancelReason(''); }}
+                  disabled={isCancelling}
+                  className="px-6 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleCancelBooking}
+                  disabled={isCancelling}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors disabled:opacity-50"
+                >
+                  {isCancelling ? 'Membatalkan...' : 'Ya, Batalkan Booking'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirm Payment Modal */}
       {showConfirmModal && selectedBooking && (
