@@ -105,6 +105,7 @@ export default function BookingHistoryPage() {
         <BookingList 
           bookings={filteredBookings}
           isLoadingAction={isLoadingAction}
+          onCancelSuccess={fetchBookings}
         />
       )}
     </div>
