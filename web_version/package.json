@@ -16,6 +16,7 @@
     "@types/react-dom": "18.2.18",
     "autoprefixer": "10.4.16",
     "axios": "^1.6.2",
+    "date-fns": "^4.1.0",
     "next": "^15.3.2",
     "next-auth": "^4.24.5",
     "postcss": "8.4.32",
