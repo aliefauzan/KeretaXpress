@@ -1,5 +1,5 @@
 steps:
-  # 1. Fetch .env from Secret Manager
+  # ==================== SHARED: Fetch .env from Secret Manager ====================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'fetch-env'
     entrypoint: 'bash'
@@ -8,33 +8,34 @@ steps:
       - |
         gcloud secrets versions access latest --secret="express-backend-env" > backend/JavaScript/.env
 
-  # 2. Build Docker image
+  # ==================== BACKEND API SERVICE ====================
+  # 1. Build Backend API Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'build-image'
+    id: 'build-backend-image'
     args:
       - build
       - -t
-      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
       - -f
       - backend/JavaScript/Dockerfile
       - backend/JavaScript
 
-  # 3. Push image to Artifact Registry
+  # 2. Push Backend API image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'push-image'
+    id: 'push-backend-image'
     args:
       - push
-      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
 
-  # 4. Deploy image to Cloud Run
+  # 3. Deploy Backend API to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy-to-cloudrun'
+    id: 'deploy-backend-to-cloudrun'
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - ${_SERVICE_NAME}
-      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+      - ${_BACKEND_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
       - --region=${_DEPLOY_REGION}
       - --platform=${_PLATFORM}
       - --allow-unauthenticated
@@ -45,8 +46,48 @@ steps:
       - --min-instances=0
       - --quiet
 
+  # ==================== SCHEDULER SERVICE ====================
+  # 4. Build Scheduler Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-scheduler-image'
+    args:
+      - build
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+      - -f
+      - backend/JavaScript/Dockerfile.scheduler
+      - backend/JavaScript
+
+  # 5. Push Scheduler image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-scheduler-image'
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+
+  # 6. Deploy Scheduler to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-scheduler-to-cloudrun'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SCHEDULER_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --no-allow-unauthenticated
+      - --port=8080
+      - --memory=256Mi
+      - --cpu=1
+      - --timeout=300s
+      - --max-instances=1
+      - --min-instances=0
+      - --quiet
+
 images:
-  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
 
 options:
   substitutionOption: ALLOW_LOOSE
@@ -55,7 +96,8 @@ options:
 substitutions:
   _AR_PROJECT_ID: tubesabp-459213
   _PLATFORM: managed
-  _SERVICE_NAME: express-backend-api
+  _BACKEND_SERVICE_NAME: express-backend-api
+  _SCHEDULER_SERVICE_NAME: keretaxpress-scheduler
   REPO_NAME: tubesabp
   _DEPLOY_REGION: asia-southeast2
   _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
@@ -64,3 +106,5 @@ substitutions:
 tags:
   - gcp-cloud-build-deploy-cloud-run
   - express-backend-api
+  - keretaxpress-scheduler
+  - dual-service-deployment

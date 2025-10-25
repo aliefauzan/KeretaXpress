@@ -37,5 +37,5 @@ EXPOSE 8080
 # Use tini to handle signals properly
 # ENTRYPOINT ["/sbin/tini", "--"]
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the scheduler server (lightweight, only scheduler routes)
+CMD ["node", "scheduler-server.js"]
