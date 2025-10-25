@@ -14,6 +14,11 @@ import trainRoutes from './routes/trainRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import notificationStreamRoutes from './routes/notificationStreamRoutes.js';
+import adminStreamRoutes from './routes/adminStreamRoutes.js';
+import bookingStreamRoutes from './routes/bookingStreamRoutes.js';
+import schedulerRoutes from './routes/schedulerRoutes.js';
 
 // Import database to test connection
 import pool from './config/database.js';
@@ -89,9 +94,14 @@ app.get('/', (req, res) => {
 app.use('/api', authRoutes);
 app.use('/api/stations', stationRoutes);
 app.use('/api/trains', trainRoutes);
-app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/admin/bookings', adminStreamRoutes); // SSE stream for admin bookings (must be before /api/admin)
 app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationStreamRoutes); // SSE stream for notifications
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/bookings', bookingStreamRoutes); // SSE stream for user bookings (must be before /api/bookings)
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/scheduler', schedulerRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -119,6 +129,10 @@ const startServer = async () => {
     const client = await pool.connect();
     console.log('✓ Database connected successfully');
     client.release();
+    
+    // Note: Booking cleanup is now handled by Google Cloud Functions
+    // See backend/JavaScript/functions/README.md for deployment instructions
+    console.log('ℹ️  Booking cleanup handled by Cloud Scheduler → Cloud Functions');
     
     // Start server
     app.listen(PORT, () => {
