@@ -21,7 +21,27 @@ class Notification {
         [uuid, type, notifiableType, notifiableId, JSON.stringify(data)]
       );
       
-      return result.rows[0];
+      const notification = result.rows[0];
+
+      // 🔔 Send real-time notification via SSE (non-blocking)
+      if (data.user_uuid) {
+        try {
+          // Import dynamically to avoid circular dependency
+          const { notifyUser, notifyUnreadCount } = await import('../routes/notificationStreamRoutes.js');
+          
+          // Send notification to connected clients
+          notifyUser(data.user_uuid, notification);
+          
+          // Get updated unread count for this user
+          const unreadCount = await Notification.getUnreadCount('payment', notifiableId);
+          notifyUnreadCount(data.user_uuid, unreadCount);
+        } catch (sseError) {
+          // Don't fail notification creation if SSE fails
+          console.error('SSE broadcast error:', sseError);
+        }
+      }
+      
+      return notification;
     } catch (error) {
       throw error;
     }
@@ -81,6 +101,73 @@ class Notification {
   }
 
   /**
+   * Get notifications by user UUID (from data JSONB field)
+   */
+  static async getByUserUuid(userUuid, filters = {}, limit = 50, offset = 0) {
+    try {
+      let query = `
+        SELECT * FROM notifications
+        WHERE data->>'user_uuid' = $1
+      `;
+      const params = [userUuid];
+      let paramIndex = 2;
+
+      // Add type filter
+      if (filters.type) {
+        query += ` AND type = $${paramIndex}`;
+        params.push(filters.type);
+        paramIndex++;
+      }
+
+      // Add read filter
+      if (filters.read === true) {
+        query += ` AND read_at IS NOT NULL`;
+      } else if (filters.read === false) {
+        query += ` AND read_at IS NULL`;
+      }
+
+      query += ` ORDER BY created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
+
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Count unread notifications by user UUID
+   */
+  static async countUnreadByUserUuid(userUuid) {
+    try {
+      const result = await pool.query(
+        `SELECT COUNT(*) as count FROM notifications
+         WHERE data->>'user_uuid' = $1 AND read_at IS NULL`,
+        [userUuid]
+      );
+      return parseInt(result.rows[0].count);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Find notification by UUID
+   */
+  static async findByUuid(uuid) {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM notifications WHERE uuid = $1`,
+        [uuid]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Mark notification as read
    */
   static async markAsRead(notificationId) {
@@ -90,6 +177,42 @@ class Notification {
         [notificationId]
       );
       return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Mark notification as read by UUID
+   */
+  static async markAsReadByUuid(uuid) {
+    try {
+      const result = await pool.query(
+        `UPDATE notifications 
+         SET read_at = NOW(), updated_at = NOW()
+         WHERE uuid = $1 AND read_at IS NULL
+         RETURNING *`,
+        [uuid]
+      );
+      return result.rows[0] || null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Mark all notifications as read for a user (by user UUID)
+   */
+  static async markAllAsReadByUserUuid(userUuid) {
+    try {
+      const result = await pool.query(
+        `UPDATE notifications 
+         SET read_at = NOW(), updated_at = NOW()
+         WHERE data->>'user_uuid' = $1 AND read_at IS NULL
+         RETURNING *`,
+        [userUuid]
+      );
+      return result.rows.length;
     } catch (error) {
       throw error;
     }
