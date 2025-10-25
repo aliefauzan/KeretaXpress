@@ -10,6 +10,8 @@ import AuthButtons from './navbar/AuthButtons';
 import MobileMenu from './navbar/MobileMenu';
 import MobileMenuToggle from './navbar/MobileMenuToggle';
 import AccountDialog from './navbar/AccountDialog';
+import NotificationPanel from './notifications/NotificationPanel';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface EnhancedNavbarProps {
   onSearchClick?: () => void;
@@ -28,8 +30,11 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [notifications, setNotifications] = useState(3);
   const [showAccountDialog, setShowAccountDialog] = useState(false);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  
+  // Use notification hook for real-time notifications
+  const { unreadCount } = useNotifications();
 
   // Use AuthContext user state or prop fallback
   const isLoggedIn = propIsLoggedIn !== undefined ? propIsLoggedIn : !!user;
@@ -62,9 +67,8 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
   const handleNotificationsClick = () => {
     if (onNotificationsClick) {
       onNotificationsClick();
-    } else {
-      console.log('Notifications clicked');
     }
+    setIsNotificationPanelOpen(true);
   };  const handleLogout = async () => {
     await logout();
     setIsMobileMenuOpen(false);
@@ -90,7 +94,7 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
             <QuickActions
               isScrolled={isScrolled}
               isLoggedIn={isLoggedIn}
-              notifications={notifications}
+              notifications={unreadCount}
               onSearchClick={handleSearchClick}
               onHistoryClick={handleHistoryClick}
               onNotificationsClick={handleNotificationsClick}
@@ -115,7 +119,7 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
         </div>        <MobileMenu
           isOpen={isMobileMenuOpen}
           isLoggedIn={isLoggedIn}
-          notifications={notifications}
+          notifications={unreadCount}
           onSearchClick={handleSearchClick}
           onHistoryClick={handleHistoryClick}
           onNotificationsClick={handleNotificationsClick}
@@ -131,6 +135,14 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
         onLogout={handleLogout}
         onClose={() => setShowAccountDialog(false)}
       />
+      
+      {/* Notification Panel */}
+      {isLoggedIn && (
+        <NotificationPanel
+          isOpen={isNotificationPanelOpen}
+          onClose={() => setIsNotificationPanelOpen(false)}
+        />
+      )}
     </nav>
   );
 };
