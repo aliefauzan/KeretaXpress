@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiX, FiRefreshCw } from 'react-icons/fi';
+import { useAdminBookingsSSE } from '@/hooks/useAdminBookingsSSE';
 
 interface Booking {
   id: number;
@@ -34,10 +35,15 @@ export default function BookingsPage() {
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // 🔔 Real-time SSE updates (replaces polling)
+  const { shouldRefresh, lastEvent, isConnected } = useAdminBookingsSSE({
+    enableSSE: true,
+    autoRefresh: true
+  });
 
   const fetchBookings = async (showLoader = true) => {
     try {
@@ -69,19 +75,8 @@ export default function BookingsPage() {
 
   useEffect(() => {
     fetchBookings();
-    
-    // Set up real-time polling every 5 seconds
-    intervalRef.current = setInterval(() => {
-      fetchBookings(false); // Don't show loader for auto-refresh
-    }, 5000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, shouldRefresh]); // 🔔 Refresh when SSE triggers update
 
   const handleConfirmPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,8 +196,11 @@ export default function BookingsPage() {
           <p className="text-gray-500 mt-1">Manage customer bookings and payments</p>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="text-sm text-gray-500">
-            Last updated: {lastUpdate.toLocaleTimeString('id-ID')}
+          <div className="flex items-center space-x-2 text-sm">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+            <span className="text-gray-500">
+              {isConnected ? 'Live' : 'Offline'} • {lastUpdate.toLocaleTimeString('id-ID')}
+            </span>
           </div>
           <button
             onClick={() => fetchBookings()}
