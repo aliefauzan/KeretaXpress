@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import Payment from '../models/Payment.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import supabaseService from '../services/supabaseService.js';
 import midtransService from '../services/midtransService.js';
 
@@ -308,8 +309,82 @@ class PaymentController {
       // Update booking status (only if payment is successful)
       if (paidAt) {
         await Booking.updateStatus(order_id, 'paid');
+        
+        // Create notifications for successful payment
+        try {
+          // Payment completed notification
+          await Notification.create({
+            type: 'payment.completed',
+            notifiableType: 'payment',
+            notifiableId: payment?.id || booking.id,
+            data: {
+              user_uuid: booking.user_uuid,
+              transaction_id: order_id,
+              booking_code: booking.booking_code,
+              amount: booking.total_price,
+              title: 'Pembayaran Berhasil',
+              message: `Pembayaran untuk booking ${booking.booking_code} telah berhasil diproses.`,
+              triggered_by: 'midtrans',
+              payment_method: notification.payment_type
+            }
+          });
+
+          // Booking confirmed notification
+          await Notification.create({
+            type: 'booking.confirmed',
+            notifiableType: 'booking',
+            notifiableId: booking.id,
+            data: {
+              user_uuid: booking.user_uuid,
+              transaction_id: order_id,
+              booking_code: booking.booking_code,
+              seat_number: booking.seat_number,
+              travel_date: booking.travel_date,
+              title: 'Booking Dikonfirmasi',
+              message: `Booking ${booking.booking_code} telah dikonfirmasi. Selamat menikmati perjalanan Anda!`,
+              triggered_by: 'midtrans'
+            }
+          });
+
+          console.log(`✅ Notifications created for successful payment: ${order_id}`);
+        } catch (notifError) {
+          console.error('⚠️  Failed to create notifications:', notifError);
+          // Don't fail the webhook if notification creation fails
+        }
       } else if (newStatus === 'cancelled' || newStatus === 'expired' || newStatus === 'failed') {
         await Booking.updateStatus(order_id, newStatus);
+        
+        // Create notifications for failed/cancelled/expired payment
+        try {
+          const notifType = newStatus === 'cancelled' ? 'payment.cancelled' : 
+                           newStatus === 'expired' ? 'payment.expired' : 'payment.failed';
+          const notifTitle = newStatus === 'cancelled' ? 'Pembayaran Dibatalkan' : 
+                            newStatus === 'expired' ? 'Pembayaran Kadaluarsa' : 'Pembayaran Gagal';
+          const notifMessage = newStatus === 'cancelled' 
+            ? `Pembayaran untuk booking ${booking.booking_code} telah dibatalkan.`
+            : newStatus === 'expired'
+            ? `Pembayaran untuk booking ${booking.booking_code} telah kadaluarsa. Silakan buat booking baru.`
+            : `Pembayaran untuk booking ${booking.booking_code} gagal diproses.`;
+
+          await Notification.create({
+            type: notifType,
+            notifiableType: 'payment',
+            notifiableId: payment?.id || booking.id,
+            data: {
+              user_uuid: booking.user_uuid,
+              transaction_id: order_id,
+              booking_code: booking.booking_code,
+              title: notifTitle,
+              message: notifMessage,
+              triggered_by: 'midtrans',
+              status: newStatus
+            }
+          });
+
+          console.log(`✅ Notification created for ${newStatus} payment: ${order_id}`);
+        } catch (notifError) {
+          console.error('⚠️  Failed to create notification:', notifError);
+        }
       }
 
       console.log(`✅ Payment ${order_id} status updated to: ${newStatus}`);

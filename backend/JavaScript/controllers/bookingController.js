@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import Booking from '../models/Booking.js';
 import Train from '../models/Train.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import pool from '../config/database.js';
 
 class BookingController {
@@ -119,6 +120,22 @@ class BookingController {
       await client.query('COMMIT');
 
       console.log('✅ Booking created with status: pending, transaction_id:', transactionId);
+
+      // 🔔 Broadcast new booking to all admin clients (real-time update)
+      try {
+        const { broadcastToAdmins } = await import('../routes/adminStreamRoutes.js');
+        broadcastToAdmins('booking.created', {
+          transaction_id: transactionId,
+          booking_code: booking.booking_code,
+          user_name: passenger_name,
+          train_name: train.name,
+          total_price: train.price,
+          travel_date: travel_date,
+          created_at: new Date().toISOString()
+        });
+      } catch (broadcastError) {
+        console.error('⚠️  Failed to broadcast new booking to admins:', broadcastError);
+      }
 
       return res.status(201).json(booking);
     } catch (error) {
@@ -263,6 +280,27 @@ class BookingController {
         return res.status(404).json({ 
           message: 'Booking tidak ditemukan atau tidak dapat dibatalkan' 
         });
+      }
+
+      // Create notification for customer
+      try {
+        await Notification.create({
+          type: 'booking.cancelled',
+          notifiableType: 'booking',
+          notifiableId: cancelledBooking.id,
+          data: {
+            user_uuid: userUuid,
+            transaction_id: transactionId,
+            booking_code: cancelledBooking.booking_code,
+            title: 'Booking Dibatalkan',
+            message: `Anda telah membatalkan booking ${cancelledBooking.booking_code}.`,
+            triggered_by: 'customer'
+          }
+        });
+
+        console.log(`✅ Notification sent to customer for self-cancelled booking: ${transactionId}`);
+      } catch (notifError) {
+        console.error('⚠️  Failed to create notification:', notifError);
       }
 
       return res.status(200).json({ 

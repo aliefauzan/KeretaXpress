@@ -2,6 +2,7 @@ import { validationResult } from 'express-validator';
 import pool from '../config/database.js';
 import Train from '../models/Train.js';
 import Booking from '../models/Booking.js';
+import Notification from '../models/Notification.js';
 
 class AdminController {
   // ==================== TRAIN MANAGEMENT ====================
@@ -409,6 +410,62 @@ class AdminController {
       // Get updated booking
       const updatedBooking = await Booking.findByTransactionId(transaction_id);
 
+      // Create notification for customer
+      if (status === 'paid') {
+        try {
+          await Notification.create({
+            type: 'payment.completed',
+            notifiableType: 'payment',
+            notifiableId: booking.id,
+            data: {
+              user_uuid: booking.user_uuid,
+              transaction_id: transaction_id,
+              booking_code: transaction_id,
+              amount: booking.total_price,
+              title: 'Pembayaran Dikonfirmasi',
+              message: `Pembayaran untuk booking ${transaction_id} telah dikonfirmasi oleh admin.`,
+              triggered_by: 'admin',
+              admin_email: req.admin.email,
+              notes: notes
+            }
+          });
+
+          console.log(`✅ Notification sent to customer for confirmed payment: ${transaction_id}`);
+        } catch (notifError) {
+          console.error('⚠️  Failed to create notification:', notifError);
+        }
+
+        // 🔔 Broadcast to user's booking page (real-time update)
+        try {
+          const { notifyUserBooking } = await import('../routes/bookingStreamRoutes.js');
+          notifyUserBooking(booking.user_uuid, 'booking.payment_confirmed', {
+            transaction_id: transaction_id,
+            booking_code: transaction_id,
+            status: 'paid',
+            total_price: booking.total_price,
+            confirmed_by: req.admin.email,
+            confirmed_at: new Date().toISOString()
+          });
+        } catch (broadcastError) {
+          console.error('⚠️  Failed to broadcast booking update:', broadcastError);
+        }
+      }
+
+      // 🔔 Broadcast to all admin clients (real-time update)
+      try {
+        const { broadcastToAdmins } = await import('../routes/adminStreamRoutes.js');
+        broadcastToAdmins('booking.payment_updated', {
+          transaction_id: transaction_id,
+          booking_code: transaction_id,
+          old_status: booking.status,
+          new_status: status,
+          confirmed_by: req.admin.email,
+          timestamp: new Date().toISOString()
+        });
+      } catch (broadcastError) {
+        console.error('⚠️  Failed to broadcast to admins:', broadcastError);
+      }
+
       return res.status(200).json({
         message: 'Payment status updated successfully',
         transaction_id: transaction_id,
@@ -603,6 +660,29 @@ class AdminController {
 
       // Log admin action
       console.log(`✅ Admin ${req.admin.email} cancelled booking: ${transactionId}${reason ? ` - Reason: ${reason}` : ''}`);
+
+      // Create notification for customer
+      try {
+        await Notification.create({
+          type: 'booking.cancelled',
+          notifiableType: 'booking',
+          notifiableId: cancelledBooking.id,
+          data: {
+            user_uuid: cancelledBooking.user_uuid,
+            transaction_id: transactionId,
+            booking_code: cancelledBooking.booking_code,
+            title: 'Booking Dibatalkan oleh Admin',
+            message: `Booking ${cancelledBooking.booking_code} telah dibatalkan oleh admin.${reason ? ` Alasan: ${reason}` : ''}`,
+            triggered_by: 'admin',
+            admin_email: req.admin.email,
+            reason: reason
+          }
+        });
+
+        console.log(`✅ Notification sent to customer for cancelled booking: ${transactionId}`);
+      } catch (notifError) {
+        console.error('⚠️  Failed to create notification:', notifError);
+      }
 
       return res.status(200).json({ 
         message: 'Booking berhasil dibatalkan oleh admin',
