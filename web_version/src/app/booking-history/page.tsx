@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { bookingService } from '@/utils/api';
+import { useBookingHistorySSE } from '@/hooks/useBookingHistorySSE';
 import BookingHistorySkeleton from '@/components/skeletons/BookingHistorySkeleton';
 import BookingHistoryHeader from '@/components/booking/BookingHistoryHeader';
 import BookingControls from '@/components/booking/BookingControls';
@@ -15,6 +16,12 @@ export default function BookingHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('Semua');
   const [isLoadingAction, setIsLoadingAction] = useState(false);
+
+  // 🔔 Real-time SSE updates for booking changes
+  const { shouldRefresh, lastEvent, isConnected } = useBookingHistorySSE({
+    enableSSE: true,
+    autoRefresh: true
+  });
 
   const fetchBookings = useCallback(async () => {
     setIsLoading(true);
@@ -58,7 +65,7 @@ export default function BookingHistoryPage() {
 
   useEffect(() => {
     fetchBookings();
-  }, [fetchBookings]);
+  }, [fetchBookings, shouldRefresh]); // 🔔 Refresh when SSE triggers update
 
   const handleRefresh = () => {
     fetchBookings();
