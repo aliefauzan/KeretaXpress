@@ -3,14 +3,19 @@ import pool from '../config/database.js';
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
+    // Get token from header OR query parameter (for SSE compatibility)
     const authHeader = req.headers.authorization;
+    const queryToken = req.query.token;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    } else if (queryToken) {
+      token = queryToken; // For SSE connections via EventSource
+    } else {
       return res.status(401).json({ message: 'No token provided' });
     }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
