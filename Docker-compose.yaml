@@ -1,0 +1,86 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database (optional - if not using Supabase)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: keretaxpress-db
+  #   environment:
+  #     POSTGRES_DB: keretaxpress
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  scheduler:
+    build:
+      context: ./backend/JavaScript
+      dockerfile: Dockerfile.scheduler
+    container_name: keretaxpress-scheduler
+    ports:
+      - "3005:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    env_file:
+      - ./backend/JavaScript/.env
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - keretaxpress-network
+
+  # Express Backend API
+  backend:
+    build:
+      context: ./backend/JavaScript
+      dockerfile: Dockerfile
+    container_name: keretaxpress-backend
+    ports:
+      - "3005:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    env_file:
+      - ./backend/JavaScript/.env
+    depends_on:
+      - scheduler
+    #   postgres:
+    #     condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - keretaxpress-network
+
+  # Next.js Frontend Web
+  web:
+    build:
+      context: ./web_version
+      dockerfile: Dockerfile
+    container_name: keretaxpress-web
+    ports:
+      - "3001:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - NEXT_PUBLIC_API_URL=http://backend:8080/api
+    env_file:
+      - ./web_version/.env
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - keretaxpress-network
+
+networks:
+  keretaxpress-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
