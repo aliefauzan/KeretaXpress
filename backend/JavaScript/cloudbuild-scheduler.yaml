@@ -1,0 +1,71 @@
+# Cloud Build configuration for KeretaXpress Scheduler Service
+# Deploys the cleanup scheduler service (triggered by Cloud Scheduler)
+
+steps:
+  # 1. Fetch .env from Secret Manager
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fetch-env'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret="express-backend-env" > backend/JavaScript/.env
+
+  # 2. Build Docker image for Scheduler service
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - build
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+      - -f
+      - backend/JavaScript/Dockerfile.scheduler
+      - backend/JavaScript
+
+  # 3. Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+
+  # 4. Deploy Scheduler service to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-to-cloudrun'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --no-allow-unauthenticated
+      - --port=8080
+      - --memory=256Mi
+      - --cpu=1
+      - --timeout=300s
+      - --max-instances=1
+      - --min-instances=0
+      - --quiet
+
+images:
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
+
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _AR_PROJECT_ID: tubesabp-459213
+  _PLATFORM: managed
+  _SERVICE_NAME: keretaxpress-scheduler
+  _REPO_NAME: tubesabp
+  _DEPLOY_REGION: asia-southeast2
+  _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
+  _AR_REPOSITORY: cloud-run-source-deploy
+
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - keretaxpress-scheduler
+  - cleanup-service
