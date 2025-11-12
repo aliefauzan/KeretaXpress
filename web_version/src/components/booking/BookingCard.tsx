@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
+import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDate, formatTime } from '@/utils/format';
 import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo, FiX, FiDownload } from 'react-icons/fi';
 import { Train } from '@/types';
@@ -27,6 +28,9 @@ const BookingCard: React.FC<BookingCardProps> = ({
   const router = useRouter();
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   const handleCancelBooking = async () => {
     if (!booking.transaction_id) return;
@@ -35,15 +39,16 @@ const BookingCard: React.FC<BookingCardProps> = ({
     try {
       await bookingService.cancelBooking(booking.transaction_id);
       setShowCancelConfirm(false);
+      setModalMessage('Booking berhasil dibatalkan');
+      setShowSuccessModal(true);
       if (onCancelSuccess) {
         onCancelSuccess();
       }
-      // Optionally show success message
-      alert('Booking berhasil dibatalkan');
     } catch (error: any) {
       console.error('Error cancelling booking:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Gagal membatalkan booking';
-      alert(errorMessage);
+      setModalMessage(errorMessage);
+      setShowErrorModal(true);
     } finally {
       setIsCancelling(false);
     }
@@ -214,38 +219,38 @@ const BookingCard: React.FC<BookingCardProps> = ({
       </div>
 
       {/* Cancel Confirmation Modal */}
-      {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Konfirmasi Pembatalan</h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin membatalkan booking ini?
-              <br />
-              <span className="font-medium text-gray-900">ID: {booking.transaction_id}</span>
-            </p>
-            <div className="flex space-x-3">
-              <Button
-                onClick={() => setShowCancelConfirm(false)}
-                variant="outline"
-                size="md"
-                disabled={isCancelling}
-                className="flex-1"
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleCancelBooking}
-                variant="primary"
-                size="md"
-                disabled={isCancelling}
-                className="flex-1 bg-red-600 hover:bg-red-700"
-              >
-                {isCancelling ? 'Membatalkan...' : 'Ya, Batalkan'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        title="Konfirmasi Pembatalan"
+        message={`Apakah Anda yakin ingin membatalkan booking ini?\nID: ${booking.transaction_id}`}
+        type="confirm"
+        confirmText="Ya, Batalkan"
+        cancelText="Batal"
+        onConfirm={handleCancelBooking}
+        isLoading={isCancelling}
+        loadingText="Membatalkan..."
+      />
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil"
+        message={modalMessage}
+        type="success"
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Gagal"
+        message={modalMessage}
+        type="error"
+        confirmText="OK"
+      />
     </div>
   );
 };
