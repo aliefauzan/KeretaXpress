@@ -49,15 +49,22 @@ const transformTrainData = (train: any): Train => {
     }
   }
   
-  // Get station names
+  // Get station names - backend returns departure_station_name and arrival_station_name directly
   let departureStationName = '';
   let arrivalStationName = '';
   
-  if (train.departure_station) {
+  // Check for direct fields first (from train search/list)
+  if (train.departure_station_name) {
+    departureStationName = train.departure_station_name;
+  } else if (train.departure_station) {
+    // Fallback to nested object (from booking history)
     departureStationName = train.departure_station.name;
   }
   
-  if (train.arrival_station) {
+  if (train.arrival_station_name) {
+    arrivalStationName = train.arrival_station_name;
+  } else if (train.arrival_station) {
+    // Fallback to nested object (from booking history)
     arrivalStationName = train.arrival_station.name;
   }
   
