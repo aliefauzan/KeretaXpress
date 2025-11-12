@@ -96,9 +96,10 @@ class Train {
       // Generate all seats (A1 to A{totalSeats})
       const allSeats = Array.from({ length: totalSeats }, (_, i) => `A${i + 1}`);
 
-      // Get booked seats
+      // Get booked seats - exclude cancelled bookings
       const bookedResult = await pool.query(
-        'SELECT seat_number FROM bookings WHERE train_id = $1 AND travel_date = $2',
+        `SELECT seat_number FROM bookings 
+         WHERE train_id = $1 AND travel_date = $2 AND status != 'cancelled'`,
         [trainId, travelDate]
       );
 

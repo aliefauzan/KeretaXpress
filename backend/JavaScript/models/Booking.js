@@ -139,23 +139,52 @@ class Booking {
   }
 
   static async cancel(transactionId, cancelledBy = 'customer') {
+    const client = await pool.connect();
+    
     try {
-      const result = await pool.query(
+      await client.query('BEGIN');
+      
+      // Get the booking details first
+      const bookingResult = await client.query(
+        `SELECT * FROM bookings 
+         WHERE transaction_id = $1 AND status NOT IN ('cancelled', 'paid')
+         FOR UPDATE`,
+        [transactionId]
+      );
+      
+      if (bookingResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      
+      const booking = bookingResult.rows[0];
+      
+      // Update booking status to cancelled
+      const cancelResult = await client.query(
         `UPDATE bookings 
          SET status = 'cancelled', 
              updated_at = NOW()
-         WHERE transaction_id = $1 AND status NOT IN ('cancelled', 'paid')
+         WHERE transaction_id = $1
          RETURNING *`,
         [transactionId]
       );
       
-      if (result.rows.length === 0) {
-        return null;
-      }
+      // Increment available seats back to the train
+      await client.query(
+        `UPDATE trains 
+         SET available_seats = available_seats + 1, 
+             updated_at = NOW()
+         WHERE id = $1`,
+        [booking.train_id]
+      );
       
-      return result.rows[0];
+      await client.query('COMMIT');
+      return cancelResult.rows[0];
     } catch (error) {
+      await client.query('ROLLBACK');
       throw error;
+    } finally {
+      client.release();
     }
   }
 
