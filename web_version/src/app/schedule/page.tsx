@@ -70,10 +70,11 @@ function SchedulePageContent() {
           // Preserve raw time fields for format functions
           departure_time: train.departure_time || '',
           arrival_time: train.arrival_time || '',
-          departureStationName: train.departure_station?.name || '',
-          arrivalStationName: train.arrival_station?.name || '',
-          departure: train.departure_station?.name || '',
-          arrival: train.arrival_station?.name || '',
+          // Backend returns flat fields: departure_station_name and arrival_station_name
+          departureStationName: train.departure_station_name || train.departure_station?.name || '',
+          arrivalStationName: train.arrival_station_name || train.arrival_station?.name || '',
+          departure: train.departure_station_name || train.departure_station?.name || '',
+          arrival: train.arrival_station_name || train.arrival_station?.name || '',
           duration: train.duration_minutes ? `${Math.floor(train.duration_minutes / 60)}h ${train.duration_minutes % 60}m` : '',
           date: '' // Trains don't have specific dates anymore
         }));
@@ -114,10 +115,11 @@ function SchedulePageContent() {
           // Preserve raw time fields for format functions
           departure_time: train.departure_time || '',
           arrival_time: train.arrival_time || '',
-          departureStationName: train.departure_station?.name || '',
-          arrivalStationName: train.arrival_station?.name || '',
-          departure: train.departure_station?.name || '',
-          arrival: train.arrival_station?.name || '',
+          // Backend returns flat fields: departure_station_name and arrival_station_name
+          departureStationName: train.departure_station_name || train.departure_station?.name || '',
+          arrivalStationName: train.arrival_station_name || train.arrival_station?.name || '',
+          departure: train.departure_station_name || train.departure_station?.name || '',
+          arrival: train.arrival_station_name || train.arrival_station?.name || '',
           duration: train.duration_minutes ? `${Math.floor(train.duration_minutes / 60)}h ${train.duration_minutes % 60}m` : '',
           date: formattedDate // Use the search date
         }));
