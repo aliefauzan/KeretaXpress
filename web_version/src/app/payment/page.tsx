@@ -54,15 +54,82 @@ function PaymentPageContent() {
             setError('Booking tidak ditemukan');
             setIsLoading(false);
             return;
-          }          console.log('Found booking from history:', foundBooking);
+          }
+          
           setBooking(foundBooking);
+          
+          // Use transformTrainData if the train object exists in booking
           if (foundBooking.train) {
-            setTrain(foundBooking.train);
+            // The backend returns train with nested station objects
+            // Transform it using the same API transformation for consistency
+            const trainData = {
+              ...foundBooking.train,
+              // Ensure station names are available for transformation
+              departure_station_name: foundBooking.train.departure_station?.name || foundBooking.departure_station?.name,
+              arrival_station_name: foundBooking.train.arrival_station?.name || foundBooking.arrival_station?.name,
+            };
+            
+            // Import formatCurrency
+            const { formatCurrency } = await import('@/utils/format');
+            
+            // We can't directly call transformTrainData since it's not exported,
+            // but we can manually transform following the same pattern
+            const mappedTrain: Train = {
+              id: trainData.id?.toString() || foundBooking.train_id?.toString() || '',
+              name: trainData.name || foundBooking.train_name || '',
+              operator: trainData.operator || 'PT. KAI',
+              date: foundBooking.travel_date || foundBooking.booking_date || '',
+              time: trainData.departure_time ? trainData.departure_time.substring(0, 5) : '',
+              departure: trainData.departure_station?.id?.toString() || '',
+              arrival: trainData.arrival_station?.id?.toString() || '',
+              arrivalTime: trainData.arrival_time ? trainData.arrival_time.substring(0, 5) : '',
+              duration: '',
+              classType: trainData.class_type || 'Ekonomi',
+              price: formatCurrency(Number(foundBooking.total_price || trainData.price || 0)),
+              seatsLeft: trainData.available_seats || 0,
+              // Use the flattened station names we just created
+              departureStationName: trainData.departure_station_name || '',
+              arrivalStationName: trainData.arrival_station_name || '',
+              departure_time: trainData.departure_time,
+              arrival_time: trainData.arrival_time,
+              departure_station: trainData.departure_station,
+              arrival_station: trainData.arrival_station
+            };
+            
+            setTrain(mappedTrain);
+          } else {
+            // Fallback: construct train from flat booking data
+            // Import formatCurrency
+            const { formatCurrency } = await import('@/utils/format');
+            
+            const constructedTrain: Train = {
+              id: foundBooking.train_id?.toString() || '',
+              name: foundBooking.train_name || '',
+              operator: foundBooking.operator || 'PT. KAI',
+              date: foundBooking.travel_date || foundBooking.booking_date || '',
+              time: foundBooking.departure_time ? foundBooking.departure_time.substring(0, 5) : '',
+              departure: '',
+              arrival: '',
+              arrivalTime: foundBooking.arrival_time ? foundBooking.arrival_time.substring(0, 5) : '',
+              duration: '',
+              classType: foundBooking.class_type || 'Ekonomi',
+              price: formatCurrency(Number(foundBooking.total_price || 0)),
+              seatsLeft: 0,
+              departureStationName: foundBooking.departure_station_name || foundBooking.departure_station?.name || '',
+              arrivalStationName: foundBooking.arrival_station_name || foundBooking.arrival_station?.name || '',
+              departure_time: foundBooking.departure_time,
+              arrival_time: foundBooking.arrival_time,
+              departure_station: foundBooking.departure_station,
+              arrival_station: foundBooking.arrival_station
+            };
+            
+            setTrain(constructedTrain);
           }
         } else {
           // Load from sessionStorage (new booking flow)
           const storedBooking = sessionStorage.getItem('currentBooking');
           const storedTrain = sessionStorage.getItem('selectedTrain');
+          const storedDate = sessionStorage.getItem('travelDate');
           
           if (!storedBooking || !storedTrain) {
             router.push('/schedule');
@@ -71,12 +138,9 @@ function PaymentPageContent() {
           
           const parsedBooking = JSON.parse(storedBooking);
           const parsedTrain = JSON.parse(storedTrain);
-            console.log('Loaded booking from sessionStorage:', parsedBooking);
-          console.log('Loaded train from sessionStorage:', parsedTrain);
-          console.log('Transaction ID from booking:', parsedBooking.transaction_id);
-          console.log('Available booking keys:', Object.keys(parsedBooking));
           
           setBooking(parsedBooking);
+          // Use the train data from schedule (selectedTrain) - it has the correct format
           setTrain(parsedTrain);
         }
       } catch (error) {
