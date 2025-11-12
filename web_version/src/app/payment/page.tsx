@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import TripSummaryCard from '@/components/TripSummaryCard';
+import Modal from '@/components/ui/Modal';
 import { bookingService, paymentService } from '@/utils/api';
 import { Train } from '@/types';
 import { formatCurrency } from '@/utils/format';
@@ -32,6 +33,7 @@ function PaymentPageContent() {
   const [existingPayment, setExistingPayment] = useState<any>(null);
   const [useQrPayment, setUseQrPayment] = useState(false);
   const [qrCodeData, setQrCodeData] = useState<any>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   useEffect(() => {
     const loadBookingData = async () => {
       try {
@@ -290,7 +292,7 @@ function PaymentPageContent() {
 
   const handleDownloadTicket = () => {
     // Placeholder for download functionality
-    alert('Fitur download tiket akan segera tersedia');
+    setShowInfoModal(true);
   };
 
   if (isLoading || !booking || !train) {
@@ -388,6 +390,16 @@ function PaymentPageContent() {
           onDownloadTicket={handleDownloadTicket}
         />
       </div>
+
+      {/* Info Modal */}
+      <Modal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title="Informasi"
+        message="Fitur download tiket akan segera tersedia"
+        type="alert"
+        confirmText="OK"
+      />
   </div>
   );
 }

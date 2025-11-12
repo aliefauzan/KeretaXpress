@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
+import Modal from '@/components/ui/Modal';
 
 interface Train {
   id: number;
@@ -33,6 +34,9 @@ export default function TrainsPage() {
   const [editingTrain, setEditingTrain] = useState<Train | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     operator: 'PT. KAI',
@@ -112,7 +116,8 @@ export default function TrainsPage() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(editingTrain ? 'Train updated successfully!' : 'Train created successfully!');
+        setModalMessage(editingTrain ? 'Train updated successfully!' : 'Train created successfully!');
+        setShowSuccessModal(true);
         setShowModal(false);
         resetForm();
         fetchTrains();
@@ -156,15 +161,18 @@ export default function TrainsPage() {
       });
 
       if (response.ok) {
-        alert('Train deleted successfully!');
+        setModalMessage('Train deleted successfully!');
+        setShowSuccessModal(true);
         fetchTrains();
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to delete train');
+        setModalMessage(error.message || 'Failed to delete train');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error deleting train:', error);
-      alert('Failed to delete train');
+      setModalMessage('Failed to delete train');
+      setShowErrorModal(true);
     }
   };
 
@@ -471,6 +479,26 @@ export default function TrainsPage() {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil"
+        message={modalMessage}
+        type="success"
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Gagal"
+        message={modalMessage}
+        type="error"
+        confirmText="OK"
+      />
     </div>
   );
 }

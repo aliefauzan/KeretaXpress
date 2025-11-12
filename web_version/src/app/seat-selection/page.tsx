@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TripSummaryCard from '@/components/TripSummaryCard';
+import Modal from '@/components/ui/Modal';
 import { trainService } from '@/utils/api';
 import { Train } from '@/types';
 import SeatSelectionSkeleton from '@/components/skeletons/SeatSelectionSkeleton';
@@ -19,6 +20,7 @@ export default function SeatSelectionPage() {
   const [availableSeats, setAvailableSeats] = useState<string[]>([]);
   const [selectedSeat, setSelectedSeat] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true); // Start with loading true
+  const [showAlertModal, setShowAlertModal] = useState(false);
 
   useEffect(() => {
     const storedTrainJSON = sessionStorage.getItem('selectedTrain');
@@ -81,7 +83,7 @@ export default function SeatSelectionPage() {
 
   const handleContinue = () => {
     if (!selectedSeat) {
-      alert('Silakan pilih kursi terlebih dahulu.');
+      setShowAlertModal(true);
       return;
     }
     
@@ -139,6 +141,16 @@ export default function SeatSelectionPage() {
           )}
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <Modal
+        isOpen={showAlertModal}
+        onClose={() => setShowAlertModal(false)}
+        title="Perhatian"
+        message="Silakan pilih kursi terlebih dahulu."
+        type="alert"
+        confirmText="OK"
+      />
     </div>
   );
 }

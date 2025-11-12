@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { FiCheckCircle, FiClock, FiXCircle, FiAlertCircle, FiX, FiRefreshCw } from 'react-icons/fi';
 import { useAdminBookingsSSE } from '@/hooks/useAdminBookingsSSE';
+import Modal from '@/components/ui/Modal';
 
 interface Booking {
   id: number;
@@ -38,6 +39,9 @@ export default function BookingsPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   // 🔔 Real-time SSE updates (replaces polling)
   const { shouldRefresh, lastEvent, isConnected } = useAdminBookingsSSE({
@@ -97,18 +101,21 @@ export default function BookingsPage() {
       );
 
       if (response.ok) {
-        alert('Payment confirmed successfully!');
+        setModalMessage('Payment confirmed successfully!');
+        setShowSuccessModal(true);
         setShowConfirmModal(false);
         setSelectedBooking(null);
         setConfirmData({ status: 'paid', notes: '' });
         fetchBookings();
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to confirm payment');
+        setModalMessage(error.message || 'Failed to confirm payment');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error confirming payment:', error);
-      alert('Failed to confirm payment');
+      setModalMessage('Failed to confirm payment');
+      setShowErrorModal(true);
     }
   };
 
@@ -131,18 +138,21 @@ export default function BookingsPage() {
       );
 
       if (response.ok) {
-        alert('Booking berhasil dibatalkan');
+        setModalMessage('Booking berhasil dibatalkan');
+        setShowSuccessModal(true);
         setShowCancelModal(false);
         setSelectedBooking(null);
         setCancelReason('');
         fetchBookings();
       } else {
         const error = await response.json();
-        alert(error.message || 'Gagal membatalkan booking');
+        setModalMessage(error.message || 'Gagal membatalkan booking');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      alert('Gagal membatalkan booking');
+      setModalMessage('Gagal membatalkan booking');
+      setShowErrorModal(true);
     } finally {
       setIsCancelling(false);
     }
@@ -546,6 +556,26 @@ export default function BookingsPage() {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil"
+        message={modalMessage}
+        type="success"
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Gagal"
+        message={modalMessage}
+        type="error"
+        confirmText="OK"
+      />
     </div>
   );
 }
