@@ -597,20 +597,51 @@ class AdminController {
   // Get booking statistics (dashboard)
   static async getBookingStats(req, res) {
     try {
+      const { period, date_from, date_to } = req.query;
+      
+      // Build date filter condition
+      let dateCondition = '';
+      const dateParams = [];
+      let paramCount = 1;
+      
+      if (period) {
+        switch (period) {
+          case '1d':
+            dateCondition = `AND created_at >= NOW() - INTERVAL '1 day'`;
+            break;
+          case '7d':
+            dateCondition = `AND created_at >= NOW() - INTERVAL '7 days'`;
+            break;
+          case '30d':
+            dateCondition = `AND created_at >= NOW() - INTERVAL '30 days'`;
+            break;
+          case 'custom':
+            if (date_from && date_to) {
+              dateCondition = `AND created_at >= $${paramCount++} AND created_at <= $${paramCount++}`;
+              dateParams.push(date_from, date_to);
+            }
+            break;
+          default:
+            // 'all' or invalid - no date filter
+            break;
+        }
+      }
+      
       const statsQuery = `
         SELECT 
           COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
-          COUNT(*) FILTER (WHERE status = 'paid') as paid_count,
+          COUNT(*) FILTER (WHERE status IN ('paid', 'confirmed')) as paid_count,
           COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled_count,
           COUNT(*) FILTER (WHERE status = 'expired') as expired_count,
           COUNT(*) as total_bookings,
-          SUM(total_price) FILTER (WHERE status = 'paid') as total_revenue,
+          COALESCE(SUM(total_price) FILTER (WHERE status IN ('paid', 'confirmed')), 0) as total_revenue,
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as bookings_last_7_days,
           COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as bookings_last_30_days
         FROM bookings
+        WHERE 1=1 ${dateCondition}
       `;
 
-      const result = await pool.query(statsQuery);
+      const result = await pool.query(statsQuery, dateParams);
       const stats = result.rows[0];
 
       return res.status(200).json({
@@ -623,6 +654,11 @@ class AdminController {
           total_revenue: parseFloat(stats.total_revenue || 0),
           bookings_last_7_days: parseInt(stats.bookings_last_7_days),
           bookings_last_30_days: parseInt(stats.bookings_last_30_days)
+        },
+        filter: {
+          period: period || 'all',
+          date_from: date_from || null,
+          date_to: date_to || null
         }
       });
     } catch (error) {
