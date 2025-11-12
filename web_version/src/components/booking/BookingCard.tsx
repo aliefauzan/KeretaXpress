@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
 import { formatCurrency, formatDate, formatTime } from '@/utils/format';
-import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo, FiX } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo, FiX, FiDownload } from 'react-icons/fi';
 import { Train } from '@/types';
 import { bookingService } from '@/utils/api';
+import { openTicketInNewTab, downloadTicket } from '@/utils/ticketGenerator';
 
 interface BookingCardProps {
   booking: any;
@@ -46,6 +47,28 @@ const BookingCard: React.FC<BookingCardProps> = ({
     } finally {
       setIsCancelling(false);
     }
+  };
+
+  const handleDownloadTicket = () => {
+    const ticketData = {
+      booking: booking,
+      train: {
+        name: booking.train_name || train.name,
+        class_type: booking.class_type || train.classType,
+        departure_time: booking.departure_time || train.time,
+        arrival_time: booking.arrival_time || train.arrivalTime,
+        departure_station: booking.departure_station,
+        arrival_station: booking.arrival_station
+      },
+      passenger: {
+        name: booking.passenger_name || 'N/A',
+        idNumber: booking.passenger_id_number || 'N/A',
+        seatNumber: booking.seat_number || 'N/A'
+      }
+    };
+    
+    // Open ticket in new tab for viewing/printing
+    openTicketInNewTab(ticketData);
   };
 
   const getStatusColor = (status: string) => {
@@ -180,11 +203,11 @@ const BookingCard: React.FC<BookingCardProps> = ({
           )}
           {(displayStatus.toLowerCase() === 'confirmed' || displayStatus.toLowerCase() === 'paid') && (
             <Button 
-              onClick={() => alert(`Fitur download tiket untuk ${booking.transaction_id} belum tersedia.`)} 
+              onClick={handleDownloadTicket} 
               variant="outline"
               size="sm"
             >
-              Download Tiket
+              <FiDownload className="mr-1" /> Download Tiket
             </Button>
           )}
         </div>
