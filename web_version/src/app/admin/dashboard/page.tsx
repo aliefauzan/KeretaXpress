@@ -137,13 +137,13 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overview of your train booking system</p>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 text-white">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-blue-100 mt-1">Overview of your train booking system</p>
       </div>
 
       {/* Date Filter */}
-      <div className="bg-white rounded-xl shadow-card p-6">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
         <div className="flex items-center gap-2 mb-4">
           <FiCalendar className="text-blue-600" size={20} />
           <h3 className="text-lg font-semibold text-gray-900">Filter Periode</h3>
@@ -152,50 +152,50 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => handleDateFilterChange('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               dateFilter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
             }`}
           >
             Semua
           </button>
           <button
             onClick={() => handleDateFilterChange('1d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               dateFilter === '1d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
             }`}
           >
             1 Hari
           </button>
           <button
             onClick={() => handleDateFilterChange('7d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               dateFilter === '7d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
             }`}
           >
             7 Hari
           </button>
           <button
             onClick={() => handleDateFilterChange('30d')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               dateFilter === '30d'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
             }`}
           >
             30 Hari
           </button>
           <button
             onClick={() => handleDateFilterChange('custom')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               dateFilter === 'custom'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md'
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
             }`}
           >
             Custom
@@ -204,10 +204,10 @@ export default function AdminDashboard() {
 
         {/* Custom Date Range Picker */}
         {showCustomDatePicker && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-blue-900 mb-2">
                   Dari Tanggal
                 </label>
                 <input
@@ -218,20 +218,20 @@ export default function AdminDashboard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-blue-900 mb-2">
                   Sampai Tanggal
                 </label>
                 <input
                   type="date"
                   value={customDateTo}
                   onChange={(e) => setCustomDateTo(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <button
                 onClick={handleApplyCustomDate}
                 disabled={!customDateFrom || !customDateTo}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-colors"
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed font-medium transition-all"
               >
                 Terapkan
               </button>
@@ -243,13 +243,13 @@ export default function AdminDashboard() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((card, index) => (
-          <div key={index} className="bg-white rounded-xl shadow-card p-6">
+          <div key={index} className="bg-white rounded-xl shadow-lg p-6 border border-blue-100 hover:shadow-xl transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">{card.title}</p>
                 <p className="text-2xl font-bold text-gray-900">{card.value}</p>
               </div>
-              <div className={`${card.bgColor} ${card.textColor} p-3 rounded-lg`}>
+              <div className={`${card.bgColor} ${card.textColor} p-3 rounded-lg shadow-sm`}>
                 <card.icon size={24} />
               </div>
             </div>
@@ -260,20 +260,20 @@ export default function AdminDashboard() {
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-card p-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
             <FiTrendingUp className="mr-2 text-blue-600" />
             Recent Activity
           </h2>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Bookings (Last 7 days)</span>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-gray-700">Bookings (Last 7 days)</span>
               <span className="text-2xl font-bold text-blue-600">
                 {stats?.bookings_last_7_days || 0}
               </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Bookings (Last 30 days)</span>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-gray-700">Bookings (Last 30 days)</span>
               <span className="text-2xl font-bold text-blue-600">
                 {stats?.bookings_last_30_days || 0}
               </span>
@@ -282,64 +282,64 @@ export default function AdminDashboard() {
         </div>
 
         {/* Booking Status Breakdown */}
-        <div className="bg-white rounded-xl shadow-card p-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Booking Status</h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-yellow-50 transition-colors">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
-                <span className="text-gray-700">Pending</span>
+                <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3 shadow-sm"></div>
+                <span className="text-gray-700 font-medium">Pending</span>
               </div>
-              <span className="font-semibold">{stats?.pending_bookings || 0}</span>
+              <span className="font-bold text-lg">{stats?.pending_bookings || 0}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                <span className="text-gray-700">Paid</span>
+                <div className="w-3 h-3 bg-green-500 rounded-full mr-3 shadow-sm"></div>
+                <span className="text-gray-700 font-medium">Paid</span>
               </div>
-              <span className="font-semibold">{stats?.paid_bookings || 0}</span>
+              <span className="font-bold text-lg">{stats?.paid_bookings || 0}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
-                <span className="text-gray-700">Cancelled</span>
+                <div className="w-3 h-3 bg-red-500 rounded-full mr-3 shadow-sm"></div>
+                <span className="text-gray-700 font-medium">Cancelled</span>
               </div>
-              <span className="font-semibold">{stats?.cancelled_bookings || 0}</span>
+              <span className="font-bold text-lg">{stats?.cancelled_bookings || 0}</span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-gray-500 rounded-full mr-3"></div>
-                <span className="text-gray-700">Expired</span>
+                <div className="w-3 h-3 bg-gray-500 rounded-full mr-3 shadow-sm"></div>
+                <span className="text-gray-700 font-medium">Expired</span>
               </div>
-              <span className="font-semibold">{stats?.expired_bookings || 0}</span>
+              <span className="font-bold text-lg">{stats?.expired_bookings || 0}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-xl shadow-card p-6">
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-blue-100">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <a
             href="/admin/trains"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center"
+            className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all text-center group shadow-sm hover:shadow-md"
           >
-            <p className="font-semibold text-gray-900">Manage Trains</p>
+            <p className="font-semibold text-gray-900 group-hover:text-blue-700">Manage Trains</p>
             <p className="text-sm text-gray-600 mt-1">Add or edit train schedules</p>
           </a>
           <a
             href="/admin/bookings"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center"
+            className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all text-center group shadow-sm hover:shadow-md"
           >
-            <p className="font-semibold text-gray-900">View Bookings</p>
+            <p className="font-semibold text-gray-900 group-hover:text-blue-700">View Bookings</p>
             <p className="text-sm text-gray-600 mt-1">Manage customer bookings</p>
           </a>
           <a
             href="/admin/bookings?status=pending"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center"
+            className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all text-center group shadow-sm hover:shadow-md"
           >
-            <p className="font-semibold text-gray-900">Pending Payments</p>
+            <p className="font-semibold text-gray-900 group-hover:text-blue-700">Pending Payments</p>
             <p className="text-sm text-gray-600 mt-1">Confirm manual payments</p>
           </a>
         </div>

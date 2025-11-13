@@ -37,6 +37,12 @@ export default function TrainsPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  
+  // Filter states
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [operatorFilter, setOperatorFilter] = useState<string>('all');
+  const [stationFilter, setStationFilter] = useState<string>('all');
+  
   const [formData, setFormData] = useState({
     name: '',
     operator: 'PT. KAI',
@@ -193,45 +199,160 @@ export default function TrainsPage() {
     setFieldErrors({});
   };
 
+  // Filter trains based on selected filters
+  const filteredTrains = trains.filter(train => {
+    if (classFilter !== 'all' && train.class_type !== classFilter) return false;
+    if (operatorFilter !== 'all' && train.operator !== operatorFilter) return false;
+    if (stationFilter !== 'all') {
+      const matchesDeparture = train.departure_station_id === parseInt(stationFilter);
+      const matchesArrival = train.arrival_station_id === parseInt(stationFilter);
+      if (!matchesDeparture && !matchesArrival) return false;
+    }
+    return true;
+  });
+
+  // Get unique operators from trains
+  const uniqueOperators = Array.from(new Set(trains.map(t => t.operator)));
+
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-blue-900 font-medium">Loading trains...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Train Management</h1>
-          <p className="text-gray-600 mt-1">Manage train schedules and availability</p>
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Train Management</h1>
+            <p className="text-blue-100 mt-1">Manage train schedules and availability</p>
+          </div>
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg hover:bg-white/30 transition-all shadow-md hover:shadow-lg"
+          >
+            <FiPlus /> <span>Add Train</span>
+          </button>
         </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <FiPlus /> <span>Add Train</span>
-        </button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white border border-blue-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="text-sm text-gray-500 mb-1">Total Trains</div>
+          <div className="text-2xl font-bold text-blue-600">{trains.length}</div>
+        </div>
+        <div className="bg-white border border-green-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="text-sm text-gray-500 mb-1">Economy Class</div>
+          <div className="text-2xl font-bold text-green-600">
+            {trains.filter(t => t.class_type === 'economy').length}
+          </div>
+        </div>
+        <div className="bg-white border border-purple-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="text-sm text-gray-500 mb-1">Business Class</div>
+          <div className="text-2xl font-bold text-purple-600">
+            {trains.filter(t => t.class_type === 'business').length}
+          </div>
+        </div>
+        <div className="bg-white border border-orange-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="text-sm text-gray-500 mb-1">Executive Class</div>
+          <div className="text-2xl font-bold text-orange-600">
+            {trains.filter(t => t.class_type === 'executive').length}
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border border-blue-100 rounded-lg p-4 shadow-lg">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <label className="font-medium text-sm text-gray-700">Class:</label>
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Classes</option>
+              <option value="economy">Economy</option>
+              <option value="business">Business</option>
+              <option value="executive">Executive</option>
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <label className="font-medium text-sm text-gray-700">Operator:</label>
+            <select
+              value={operatorFilter}
+              onChange={(e) => setOperatorFilter(e.target.value)}
+              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Operators</option>
+              {uniqueOperators.map(operator => (
+                <option key={operator} value={operator}>{operator}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <label className="font-medium text-sm text-gray-700">Station:</label>
+            <select
+              value={stationFilter}
+              onChange={(e) => setStationFilter(e.target.value)}
+              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">All Stations</option>
+              {stations.map(station => (
+                <option key={station.id} value={station.id}>
+                  {station.name} ({station.city})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(classFilter !== 'all' || operatorFilter !== 'all' || stationFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setClassFilter('all');
+                setOperatorFilter('all');
+                setStationFilter('all');
+              }}
+              className="px-4 py-2 text-sm text-blue-700 hover:text-blue-900 font-medium"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+        <div className="mt-2 text-sm text-gray-600">
+          Showing {filteredTrains.length} of {trains.length} trains
+        </div>
       </div>
 
       {/* Trains Table */}
-      <div className="bg-white rounded-xl shadow-card overflow-hidden">
+      <div className="bg-white border border-blue-100 rounded-lg overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Train Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Seats</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bookings</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Train Name</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Class</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Route</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Time</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Seats</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Price</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Bookings</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-blue-900 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {trains.map((train) => (
-                <tr key={train.id} className="hover:bg-gray-50">
+            <tbody className="divide-y divide-blue-100">
+              {filteredTrains.map((train) => (
+                <tr key={train.id} className="hover:bg-blue-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-medium text-gray-900">{train.name}</div>
                     <div className="text-sm text-gray-500">{train.operator}</div>
@@ -284,12 +405,15 @@ export default function TrainsPage() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-xl font-bold">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-blue-100 shadow-2xl">
+            <div className="p-6 border-b border-blue-200 bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-xl flex items-center justify-between">
+              <h2 className="text-xl font-bold text-white">
                 {editingTrain ? 'Edit Train' : 'Add New Train'}
               </h2>
-              <button onClick={() => { setShowModal(false); resetForm(); }}>
+              <button 
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="text-white hover:text-blue-100"
+              >
                 <FiX size={24} />
               </button>
             </div>
@@ -328,7 +452,7 @@ export default function TrainsPage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
@@ -338,7 +462,7 @@ export default function TrainsPage() {
                     type="text"
                     value={formData.operator}
                     onChange={(e) => setFormData({ ...formData, operator: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
@@ -347,7 +471,7 @@ export default function TrainsPage() {
                   <select
                     value={formData.class_type}
                     onChange={(e) => setFormData({ ...formData, class_type: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="economy">Economy</option>
                     <option value="business">Business</option>
@@ -360,7 +484,7 @@ export default function TrainsPage() {
                     type="number"
                     value={formData.available_seats}
                     onChange={(e) => setFormData({ ...formData, available_seats: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   />
                 </div>
@@ -369,7 +493,7 @@ export default function TrainsPage() {
                   <select
                     value={formData.departure_station_id}
                     onChange={(e) => setFormData({ ...formData, departure_station_id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
                     <option value="">Select Station</option>
@@ -385,7 +509,7 @@ export default function TrainsPage() {
                   <select
                     value={formData.arrival_station_id}
                     onChange={(e) => setFormData({ ...formData, arrival_station_id: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
                     <option value="">Select Station</option>
@@ -409,7 +533,7 @@ export default function TrainsPage() {
                         const formattedTime = timeValue.length === 8 ? timeValue : `${timeValue}:00`;
                         setFormData({ ...formData, departure_time: formattedTime });
                       }}
-                      className="w-full px-3 py-2 border rounded-lg pr-12"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
                       required
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
@@ -430,7 +554,7 @@ export default function TrainsPage() {
                         const formattedTime = timeValue.length === 8 ? timeValue : `${timeValue}:00`;
                         setFormData({ ...formData, arrival_time: formattedTime });
                       }}
-                      className="w-full px-3 py-2 border rounded-lg pr-12"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
                       required
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
@@ -444,8 +568,8 @@ export default function TrainsPage() {
                     type="number"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg ${
-                      fieldErrors.price ? 'border-red-500' : ''
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      fieldErrors.price ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-blue-300 focus:border-blue-500'
                     }`}
                     min="0"
                     max="9999999999.99"
@@ -464,13 +588,13 @@ export default function TrainsPage() {
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); resetForm(); }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border-2 border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 font-medium transition-all shadow-md hover:shadow-lg"
                 >
                   {editingTrain ? 'Update Train' : 'Create Train'}
                 </button>
