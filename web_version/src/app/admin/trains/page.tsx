@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiX, FiRefreshCw } from 'react-icons/fi';
 import Modal from '@/components/ui/Modal';
 
 interface Train {
@@ -40,8 +40,9 @@ export default function TrainsPage() {
   
   // Filter states
   const [classFilter, setClassFilter] = useState<string>('all');
-  const [operatorFilter, setOperatorFilter] = useState<string>('all');
-  const [stationFilter, setStationFilter] = useState<string>('all');
+  const [departureStationFilter, setDepartureStationFilter] = useState<string>('all');
+  const [arrivalStationFilter, setArrivalStationFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -201,18 +202,39 @@ export default function TrainsPage() {
 
   // Filter trains based on selected filters
   const filteredTrains = trains.filter(train => {
+    // Class filter
     if (classFilter !== 'all' && train.class_type !== classFilter) return false;
-    if (operatorFilter !== 'all' && train.operator !== operatorFilter) return false;
-    if (stationFilter !== 'all') {
-      const matchesDeparture = train.departure_station_id === parseInt(stationFilter);
-      const matchesArrival = train.arrival_station_id === parseInt(stationFilter);
-      if (!matchesDeparture && !matchesArrival) return false;
+    
+    // Departure station filter - ensure both sides are numbers for comparison
+    if (departureStationFilter !== 'all') {
+      const filterStationId = parseInt(departureStationFilter);
+      const trainDepartureId = typeof train.departure_station_id === 'string' 
+        ? parseInt(train.departure_station_id) 
+        : train.departure_station_id;
+      if (trainDepartureId !== filterStationId) return false;
     }
+    
+    // Arrival station filter - ensure both sides are numbers for comparison
+    if (arrivalStationFilter !== 'all') {
+      const filterStationId = parseInt(arrivalStationFilter);
+      const trainArrivalId = typeof train.arrival_station_id === 'string' 
+        ? parseInt(train.arrival_station_id) 
+        : train.arrival_station_id;
+      if (trainArrivalId !== filterStationId) return false;
+    }
+    
+    // Search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesName = train.name?.toLowerCase().includes(query) || false;
+      const matchesOperator = train.operator?.toLowerCase().includes(query) || false;
+      const matchesDeparture = train.departure_station_name?.toLowerCase().includes(query) || false;
+      const matchesArrival = train.arrival_station_name?.toLowerCase().includes(query) || false;
+      if (!matchesName && !matchesOperator && !matchesDeparture && !matchesArrival) return false;
+    }
+    
     return true;
   });
-
-  // Get unique operators from trains
-  const uniqueOperators = Array.from(new Set(trains.map(t => t.operator)));
 
   if (isLoading) {
     return (
@@ -256,81 +278,102 @@ export default function TrainsPage() {
           </div>
         </div>
         <div className="bg-white border border-purple-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="text-sm text-gray-500 mb-1">Business Class</div>
+          <div className="text-sm text-gray-500 mb-1">Bisnis Class</div>
           <div className="text-2xl font-bold text-purple-600">
-            {trains.filter(t => t.class_type === 'business').length}
+            {trains.filter(t => t.class_type === 'Bisnis').length}
           </div>
         </div>
         <div className="bg-white border border-orange-100 rounded-lg p-4 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="text-sm text-gray-500 mb-1">Executive Class</div>
+          <div className="text-sm text-gray-500 mb-1">Eksekutif Class</div>
           <div className="text-2xl font-bold text-orange-600">
-            {trains.filter(t => t.class_type === 'executive').length}
+            {trains.filter(t => t.class_type === 'Eksekutif').length}
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-blue-100 rounded-lg p-4 shadow-lg">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <label className="font-medium text-sm text-gray-700">Class:</label>
+      <div className="bg-white border border-blue-100 rounded-lg p-6 shadow-lg">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+          {/* Departure Station */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Stasiun Keberangkatan</label>
             <select
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
-              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              value={departureStationFilter}
+              onChange={(e) => setDepartureStationFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">All Classes</option>
-              <option value="economy">Economy</option>
-              <option value="business">Business</option>
-              <option value="executive">Executive</option>
-            </select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <label className="font-medium text-sm text-gray-700">Operator:</label>
-            <select
-              value={operatorFilter}
-              onChange={(e) => setOperatorFilter(e.target.value)}
-              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Operators</option>
-              {uniqueOperators.map(operator => (
-                <option key={operator} value={operator}>{operator}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <label className="font-medium text-sm text-gray-700">Station:</label>
-            <select
-              value={stationFilter}
-              onChange={(e) => setStationFilter(e.target.value)}
-              className="px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="all">All Stations</option>
+              <option value="all">Semua Stasiun</option>
               {stations.map(station => (
-                <option key={station.id} value={station.id}>
-                  {station.name} ({station.city})
+                <option key={station.id} value={station.id.toString()}>
+                  {station.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {(classFilter !== 'all' || operatorFilter !== 'all' || stationFilter !== 'all') && (
+          {/* Arrival Station */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Stasiun Tujuan</label>
+            <select
+              value={arrivalStationFilter}
+              onChange={(e) => setArrivalStationFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">Semua Stasiun</option>
+              {stations.map(station => (
+                <option key={station.id} value={station.id.toString()}>
+                  {station.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Kelas</label>
+            <select
+              value={classFilter}
+              onChange={(e) => setClassFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">Semua Kelas</option>
+              <option value="economy">Economy</option>
+              <option value="Bisnis">Bisnis</option>
+              <option value="Eksekutif">Eksekutif</option>
+            </select>
+          </div>
+
+          {/* Search */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cari Kereta</label>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari berdasarkan nama kereta, operator, atau stasiun..."
+              className="w-full px-4 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Menampilkan <span className="font-semibold text-blue-600">{filteredTrains.length}</span> dari <span className="font-semibold">{trains.length}</span> kereta
+          </div>
+          {(classFilter !== 'all' || departureStationFilter !== 'all' || arrivalStationFilter !== 'all' || searchQuery) && (
             <button
               onClick={() => {
                 setClassFilter('all');
-                setOperatorFilter('all');
-                setStationFilter('all');
+                setDepartureStationFilter('all');
+                setArrivalStationFilter('all');
+                setSearchQuery('');
               }}
-              className="px-4 py-2 text-sm text-blue-700 hover:text-blue-900 font-medium"
+              className="flex items-center space-x-2 px-4 py-2 text-sm text-blue-700 hover:text-blue-900 font-medium border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
             >
-              Clear Filters
+              <FiRefreshCw size={16} />
+              <span>Reset Filter</span>
             </button>
           )}
-        </div>
-        <div className="mt-2 text-sm text-gray-600">
-          Showing {filteredTrains.length} of {trains.length} trains
         </div>
       </div>
 
@@ -474,8 +517,8 @@ export default function TrainsPage() {
                     className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="economy">Economy</option>
-                    <option value="business">Business</option>
-                    <option value="executive">Executive</option>
+                    <option value="Bisnis">Bisnis</option>
+                    <option value="Eksekutif">Eksekutif</option>
                   </select>
                 </div>
                 <div>

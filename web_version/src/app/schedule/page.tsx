@@ -196,11 +196,27 @@ function SchedulePageContent() {
                            train.arrivalStationName.toLowerCase().includes(query) ||
                            train.operator.toLowerCase().includes(query);
       
+      // Departure station filter - compare IDs ensuring both are numbers
+      const matchesDeparture = !departureStationId || showAllTrains || 
+        (train.departureStationId && (
+          typeof train.departureStationId === 'string' 
+            ? parseInt(train.departureStationId) === departureStationId
+            : train.departureStationId === departureStationId
+        ));
+      
+      // Arrival station filter - compare IDs ensuring both are numbers
+      const matchesArrival = !arrivalStationId || showAllTrains || 
+        (train.arrivalStationId && (
+          typeof train.arrivalStationId === 'string' 
+            ? parseInt(train.arrivalStationId) === arrivalStationId
+            : train.arrivalStationId === arrivalStationId
+        ));
+      
       // Price range filter
       const price = parseInt(train.price.replace(/\D/g, ''));
       const matchesPrice = price >= priceRange.min && price <= priceRange.max;
       
-      return matchesClass && matchesSearch && matchesPrice;
+      return matchesClass && matchesSearch && matchesDeparture && matchesArrival && matchesPrice;
     })
     .sort((a, b) => {
       let comparison = 0;
