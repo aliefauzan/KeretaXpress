@@ -6,7 +6,28 @@ class Train {
       const result = await pool.query(
         `SELECT t.*, 
                 ds.name as departure_station_name, ds.city as departure_city,
-                as_station.name as arrival_station_name, as_station.city as arrival_city
+                as_station.name as arrival_station_name, as_station.city as arrival_city,
+                CASE 
+                  WHEN EXISTS (
+                    SELECT 1 FROM train_maintenance tm 
+                    WHERE tm.train_id = t.id 
+                      AND CURRENT_DATE >= tm.start_date 
+                      AND CURRENT_DATE <= tm.end_date
+                      AND tm.status IN ('scheduled', 'active')
+                  ) THEN 'maintenance'
+                  ELSE 'active'
+                END as status,
+                (SELECT json_build_object(
+                  'id', tm.id,
+                  'start_date', tm.start_date,
+                  'end_date', tm.end_date,
+                  'reason', tm.reason
+                ) FROM train_maintenance tm
+                WHERE tm.train_id = t.id 
+                  AND CURRENT_DATE >= tm.start_date 
+                  AND CURRENT_DATE <= tm.end_date
+                  AND tm.status IN ('scheduled', 'active')
+                LIMIT 1) as current_maintenance
          FROM trains t
          JOIN stations ds ON t.departure_station_id = ds.id
          JOIN stations as_station ON t.arrival_station_id = as_station.id
@@ -44,7 +65,28 @@ class Train {
       const result = await pool.query(
         `SELECT t.*, 
                 ds.name as departure_station_name, ds.city as departure_city,
-                as_station.name as arrival_station_name, as_station.city as arrival_city
+                as_station.name as arrival_station_name, as_station.city as arrival_city,
+                CASE 
+                  WHEN EXISTS (
+                    SELECT 1 FROM train_maintenance tm 
+                    WHERE tm.train_id = t.id 
+                      AND $3::date >= tm.start_date 
+                      AND $3::date <= tm.end_date
+                      AND tm.status IN ('scheduled', 'active')
+                  ) THEN 'maintenance'
+                  ELSE 'active'
+                END as status,
+                (SELECT json_build_object(
+                  'id', tm.id,
+                  'start_date', tm.start_date,
+                  'end_date', tm.end_date,
+                  'reason', tm.reason
+                ) FROM train_maintenance tm
+                WHERE tm.train_id = t.id 
+                  AND $3::date >= tm.start_date 
+                  AND $3::date <= tm.end_date
+                  AND tm.status IN ('scheduled', 'active')
+                LIMIT 1) as current_maintenance
          FROM trains t
          JOIN stations ds ON t.departure_station_id = ds.id
          JOIN stations as_station ON t.arrival_station_id = as_station.id
@@ -52,7 +94,7 @@ class Train {
            AND t.arrival_station_id = $2
            AND t.available_seats > 0
          ORDER BY t.departure_time ASC`,
-        [departureStationId, arrivalStationId]
+        [departureStationId, arrivalStationId, date]
       );
       return result.rows;
     } catch (error) {
