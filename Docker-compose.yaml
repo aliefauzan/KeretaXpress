@@ -18,24 +18,24 @@ services:
   #     interval: 10s
   #     timeout: 5s
   #     retries: 5
-  scheduler:
-    build:
-      context: ./backend/JavaScript
-      dockerfile: Dockerfile.scheduler
-    container_name: keretaxpress-scheduler
-    ports:
-      - "3005:8080"
-    environment:
-      - NODE_ENV=production
-      - PORT=8080
-    env_file:
-      - ./backend/JavaScript/.env
+#  scheduler:
+#    build:
+#      context: ./backend/JavaScript
+#      dockerfile: Dockerfile.scheduler
+#    container_name: keretaxpress-scheduler
+#    ports:
+#      - "3006:8080"
+#    environment:
+#      - NODE_ENV=production
+#      - PORT=8080
+#    env_file:
+#      - ./backend/JavaScript/.env
     # depends_on:
     #   postgres:
     #     condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - keretaxpress-network
+#    restart: unless-stopped
+#    networks:
+#      - keretaxpress-network
 
   # Express Backend API
   backend:
