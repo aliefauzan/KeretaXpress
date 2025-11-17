@@ -19,6 +19,8 @@ import notificationStreamRoutes from './routes/notificationStreamRoutes.js';
 import adminStreamRoutes from './routes/adminStreamRoutes.js';
 import bookingStreamRoutes from './routes/bookingStreamRoutes.js';
 import schedulerRoutes from './routes/schedulerRoutes.js';
+import maintenanceRoutes from './routes/maintenance.js';
+import maintenanceStreamRoutes from './routes/maintenanceStreamRoutes.js';
 
 // Import database to test connection
 import pool from './config/database.js';
@@ -97,6 +99,8 @@ app.use('/api/trains', trainRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin/bookings', adminStreamRoutes); // SSE stream for admin bookings (must be before /api/admin)
 app.use('/api/admin', adminRoutes);
+app.use('/api/maintenance/stream', maintenanceStreamRoutes); // SSE stream for maintenance (public, must be before authenticated routes)
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationStreamRoutes); // SSE stream for notifications
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bookings', bookingStreamRoutes); // SSE stream for user bookings (must be before /api/bookings)

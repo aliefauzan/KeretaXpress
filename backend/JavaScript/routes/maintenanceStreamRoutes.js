@@ -22,7 +22,7 @@ export function broadcastMaintenanceUpdate(data) {
 }
 
 // SSE endpoint for maintenance updates
-router.get('/stream', (req, res) => {
+router.get('/', (req, res) => {
   console.log('📡 Maintenance stream connection request received');
   
   // Set headers for SSE

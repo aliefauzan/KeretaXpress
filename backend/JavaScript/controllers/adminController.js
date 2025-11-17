@@ -329,7 +329,28 @@ class AdminController {
             FROM bookings b 
             WHERE b.train_id = t.id 
             AND b.status IN ('pending', 'paid')
-          ) as total_bookings
+          ) as total_bookings,
+          CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM train_maintenance tm 
+              WHERE tm.train_id = t.id 
+                AND CURRENT_DATE >= tm.start_date 
+                AND CURRENT_DATE <= tm.end_date
+                AND tm.status IN ('scheduled', 'active')
+            ) THEN 'maintenance'
+            ELSE 'active'
+          END as status,
+          (SELECT json_build_object(
+            'id', tm.id,
+            'start_date', tm.start_date,
+            'end_date', tm.end_date,
+            'reason', tm.reason
+          ) FROM train_maintenance tm
+          WHERE tm.train_id = t.id 
+            AND CURRENT_DATE >= tm.start_date 
+            AND CURRENT_DATE <= tm.end_date
+            AND tm.status IN ('scheduled', 'active')
+          LIMIT 1) as current_maintenance
         FROM trains t
         LEFT JOIN stations ds ON t.departure_station_id = ds.id
         LEFT JOIN stations as2 ON t.arrival_station_id = as2.id
