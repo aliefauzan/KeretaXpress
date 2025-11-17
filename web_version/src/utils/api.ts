@@ -257,7 +257,8 @@ export const trainService = {
 
   getAllTrains: async () => {
     try {
-      return await apiClient.get('/trains/all');
+      // Add cache-busting timestamp to force fresh data
+      return await apiClient.get(`/trains/all?_t=${Date.now()}`);
     } catch (error) {
       console.error('Error fetching all trains:', error);
       throw error;
