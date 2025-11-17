@@ -76,7 +76,7 @@ const TrainList: React.FC<TrainListProps> = ({
     <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}`}>
       {trains.map((train: Train) => (
         <TrainCard
-          key={train.id}
+          key={`${train.id}-${train.status}-${train.currentMaintenance?.id || 'none'}`}
           train={train}
           viewMode={viewMode}
           isFavorite={favoriteTrains.includes(train.id)}

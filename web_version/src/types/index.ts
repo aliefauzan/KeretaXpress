@@ -31,6 +31,16 @@ export interface Train {
   arrival_time?: string;
   available_seats?: number;
   travel_time?: string;
+  // Maintenance fields
+  departureStationId?: number;
+  arrivalStationId?: number;
+  status?: string;
+  currentMaintenance?: {
+    id: number;
+    start_date: string;
+    end_date: string;
+    reason: string;
+  } | null;
 }
 
 export interface Station {
