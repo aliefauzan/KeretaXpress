@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import Train from '../models/Train.js';
 import Booking from '../models/Booking.js';
 import Notification from '../models/Notification.js';
+import bookingExpirationService from '../services/bookingExpirationService.js';
 
 class AdminController {
   // ==================== TRAIN MANAGEMENT ====================
@@ -406,6 +407,11 @@ class AdminController {
 
       // Update booking status
       await Booking.updateStatus(transaction_id, bookingStatus);
+
+      // ✅ Cancel automatic expiration timer if payment confirmed
+      if (status === 'paid') {
+        bookingExpirationService.cancelExpiration(transaction_id);
+      }
 
       // Log admin action with notes
       console.log(`✅ Admin ${req.admin.email} manually confirmed payment for ${transaction_id}: ${status}`);

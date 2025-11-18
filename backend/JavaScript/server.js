@@ -24,6 +24,7 @@ import maintenanceStreamRoutes from './routes/maintenanceStreamRoutes.js';
 
 // Import database to test connection
 import pool from './config/database.js';
+import bookingExpirationService from './services/bookingExpirationService.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -105,7 +106,7 @@ app.use('/api/notifications', notificationStreamRoutes); // SSE stream for notif
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bookings', bookingStreamRoutes); // SSE stream for user bookings (must be before /api/bookings)
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/scheduler', schedulerRoutes); // Backup cleanup scheduler
 
 // 404 handler
 app.use((req, res) => {
@@ -134,9 +135,9 @@ const startServer = async () => {
     console.log('✓ Database connected successfully');
     client.release();
     
-    // Note: Booking cleanup is now handled by Google Cloud Functions
-    // See backend/JavaScript/functions/README.md for deployment instructions
-    console.log('ℹ️  Booking cleanup handled by Cloud Scheduler → Cloud Functions');
+    // ⏰ Restore booking expiration timers on server restart
+    await bookingExpirationService.restoreTimers();
+    console.log('✓ Booking expiration service initialized');
     
     // Start server
     app.listen(PORT, () => {

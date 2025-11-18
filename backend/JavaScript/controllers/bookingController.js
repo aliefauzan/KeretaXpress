@@ -4,6 +4,7 @@ import Train from '../models/Train.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import pool from '../config/database.js';
+import bookingExpirationService from '../services/bookingExpirationService.js';
 
 class BookingController {
   // Generate random transaction ID
@@ -120,6 +121,9 @@ class BookingController {
       await client.query('COMMIT');
 
       console.log('✅ Booking created with status: pending, transaction_id:', transactionId);
+
+      // ⏰ Schedule automatic expiration in 30 minutes
+      bookingExpirationService.scheduleExpiration(transactionId, 30);
 
       // 🔔 Broadcast new booking to all admin clients (real-time update)
       try {
