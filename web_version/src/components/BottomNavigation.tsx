@@ -132,14 +132,20 @@ const BottomNavigation = () => {
                 <button
                   key={item.label}
                   onClick={item.onClick}
-                  className={`flex flex-col items-center justify-center py-2 px-3 min-w-0 transition-colors ${
+                  className={`group flex flex-col items-center justify-center py-2 px-3 min-w-0 transition-colors ${
                     item.isActive 
                       ? 'text-primary' 
                       : 'text-gray-500 hover:text-primary'
                   }`}
                 >
-                  <IconComponent className="w-6 h-6 mb-1" />
-                  <span className="text-xs font-medium">{item.label}</span>
+                  <IconComponent className={`w-6 h-6 mb-1 transition-all duration-300 ease-out ${
+                    item.isActive 
+                      ? 'scale-125 -translate-y-1 drop-shadow-md' 
+                      : 'group-hover:scale-110'
+                  }`} />
+                  <span className={`text-xs transition-all duration-300 ${
+                    item.isActive ? 'font-bold translate-y-0.5' : 'font-medium'
+                  }`}>{item.label}</span>
                 </button>
               );
             }
@@ -148,14 +154,20 @@ const BottomNavigation = () => {
               <Link
                 key={item.label}
                 href={item.path}
-                className={`flex flex-col items-center justify-center py-2 px-3 min-w-0 transition-colors ${
+                className={`group flex flex-col items-center justify-center py-2 px-3 min-w-0 transition-colors ${
                   item.isActive 
                     ? 'text-primary' 
                     : 'text-gray-500 hover:text-primary'
                 }`}
               >
-                <IconComponent className="w-6 h-6 mb-1" />
-                <span className="text-xs font-medium">{item.label}</span>
+                <IconComponent className={`w-6 h-6 mb-1 transition-all duration-300 ease-out ${
+                  item.isActive 
+                    ? 'scale-125 -translate-y-1 drop-shadow-md' 
+                    : 'group-hover:scale-110'
+                }`} />
+                <span className={`text-xs transition-all duration-300 ${
+                  item.isActive ? 'font-bold translate-y-0.5' : 'font-medium'
+                }`}>{item.label}</span>
               </Link>
             );
           })}
