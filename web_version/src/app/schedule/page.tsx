@@ -7,6 +7,7 @@ import { FaTrain } from 'react-icons/fa';
 import { MdOutlineCompareArrows } from 'react-icons/md';
 import { trainService, stationService } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/Toast';
 import { Train, Station } from '@/types';
 import { formatCurrency } from '@/utils/format';
 import theme from '@/utils/theme';
@@ -22,6 +23,7 @@ function SchedulePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [trains, setTrains] = useState<Train[]>([]);
   const [stations, setStations] = useState<Station[]>([]);
@@ -104,12 +106,28 @@ function SchedulePageContent() {
   const searchTrains = useCallback(async (departureId: number, arrivalId: number, date: Date) => {
     setIsLoading(true);
     setError(null);
+    
+    // Validate stations are different
+    if (departureId === arrivalId) {
+      showToast({
+        type: 'error',
+        title: 'Stasiun Tidak Valid',
+        message: 'Stasiun keberangkatan dan tujuan harus berbeda',
+        duration: 4000
+      });
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const formattedDate = date.toISOString().split('T')[0];      const response = await trainService.searchTrains({
-        departure_station_id: departureId,
-        arrival_station_id: arrivalId,
+      const formattedDate = date.toISOString().split('T')[0];
+      const response = await trainService.searchTrains({
+        departure_station: departureId,
+        arrival_station: arrivalId,
         date: formattedDate,
-      });      if (response && response.trains && Array.isArray(response.trains)) {
+      });
+      
+      if (response && response.trains && Array.isArray(response.trains)) {
         const transformedTrains = response.trains.map((train: any) => ({
           id: train.id,
           name: train.name || '',
@@ -129,22 +147,52 @@ function SchedulePageContent() {
           departure: train.departure_station_name || train.departure_station?.name || '',
           arrival: train.arrival_station_name || train.arrival_station?.name || '',
           duration: train.duration_minutes ? `${Math.floor(train.duration_minutes / 60)}h ${train.duration_minutes % 60}m` : '',
-          date: formattedDate // Use the search date
+          date: formattedDate, // Use the search date
+          // Maintenance status
+          departureStationId: train.departure_station_id,
+          arrivalStationId: train.arrival_station_id,
+          status: train.status || 'active',
+          currentMaintenance: train.current_maintenance || null
         }));
         setTrains(transformedTrains);
         setShowAllTrains(false);
       } else {
         setTrains([]);
         setError('Tidak ada kereta yang ditemukan untuk rute dan tanggal yang dipilih');
+        showToast({
+          type: 'info',
+          title: 'Tidak Ada Hasil',
+          message: 'Tidak ada kereta yang tersedia untuk rute dan tanggal yang dipilih',
+          duration: 4000
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error searching trains:', error);
-      setError('Terjadi kesalahan saat mencari jadwal kereta');
+      
+      // Handle validation errors from backend
+      let errorMessage = 'Terjadi kesalahan saat mencari jadwal kereta';
+      
+      if (error.originalError?.response?.data?.errors) {
+        const errors = error.originalError.response.data.errors;
+        const errorMessages = Object.values(errors).flat();
+        errorMessage = errorMessages.join(', ');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       setTrains([]);
+      
+      showToast({
+        type: 'error',
+        title: 'Pencarian Gagal',
+        message: errorMessage,
+        duration: 5000
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [showToast]);
   
   // Real-time maintenance updates - similar to booking history SSE
   const { shouldRefresh: maintenanceShouldRefresh } = useMaintenanceStream({
@@ -154,11 +202,31 @@ function SchedulePageContent() {
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (departureStationId && arrivalStationId && selectedDate) {
-      // Save search to recent searches
-      saveSearch(departureStationId, arrivalStationId, selectedDate);
-      searchTrains(departureStationId, arrivalStationId, new Date(selectedDate));
+    
+    // Validate form
+    if (!departureStationId || !arrivalStationId || !selectedDate) {
+      showToast({
+        type: 'warning',
+        title: 'Form Tidak Lengkap',
+        message: 'Silakan pilih stasiun keberangkatan, tujuan, dan tanggal',
+        duration: 4000
+      });
+      return;
     }
+    
+    if (departureStationId === arrivalStationId) {
+      showToast({
+        type: 'error',
+        title: 'Stasiun Tidak Valid',
+        message: 'Stasiun keberangkatan dan tujuan harus berbeda',
+        duration: 4000
+      });
+      return;
+    }
+    
+    // Save search to recent searches
+    saveSearch(departureStationId, arrivalStationId, selectedDate);
+    searchTrains(departureStationId, arrivalStationId, new Date(selectedDate));
   };  useEffect(() => {
     const departure = searchParams.get('departure');
     const arrival = searchParams.get('arrival');
@@ -230,19 +298,11 @@ function SchedulePageContent() {
       
       // Departure station filter - compare IDs ensuring both are numbers
       const matchesDeparture = !departureStationId || showAllTrains || 
-        (train.departureStationId && (
-          typeof train.departureStationId === 'string' 
-            ? parseInt(train.departureStationId) === departureStationId
-            : train.departureStationId === departureStationId
-        ));
+        (train.departureStationId && String(train.departureStationId) === String(departureStationId));
       
       // Arrival station filter - compare IDs ensuring both are numbers
       const matchesArrival = !arrivalStationId || showAllTrains || 
-        (train.arrivalStationId && (
-          typeof train.arrivalStationId === 'string' 
-            ? parseInt(train.arrivalStationId) === arrivalStationId
-            : train.arrivalStationId === arrivalStationId
-        ));
+        (train.arrivalStationId && String(train.arrivalStationId) === String(arrivalStationId));
       
       // Price range filter
       const priceStr = train.price?.replace(/\D/g, '') || '0';
