@@ -24,8 +24,8 @@ class TrainController {
 
       const { departure_station, arrival_station, date } = req.query;
 
-      // Validate different stations
-      if (departure_station === arrival_station) {
+      // Validate different stations only if both are provided
+      if (departure_station && arrival_station && departure_station === arrival_station) {
         return res.status(422).json({ 
           errors: {
             arrival_station: ['Arrival station must be different from departure station']
@@ -35,8 +35,8 @@ class TrainController {
 
       // Search trains
       const trains = await Train.search({
-        departureStationId: departure_station,
-        arrivalStationId: arrival_station,
+        departureStationId: departure_station || null,
+        arrivalStationId: arrival_station || null,
         date
       });
 

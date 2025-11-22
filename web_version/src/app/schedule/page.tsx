@@ -103,12 +103,12 @@ function SchedulePageContent() {
     }
   }, []);
 
-  const searchTrains = useCallback(async (departureId: number, arrivalId: number, date: Date) => {
+  const searchTrains = useCallback(async (departureId: number | null, arrivalId: number | null, date: Date) => {
     setIsLoading(true);
     setError(null);
     
-    // Validate stations are different
-    if (departureId === arrivalId) {
+    // Validate stations are different only if both are selected
+    if (departureId && arrivalId && departureId === arrivalId) {
       showToast({
         type: 'error',
         title: 'Stasiun Tidak Valid',
@@ -122,8 +122,8 @@ function SchedulePageContent() {
     try {
       const formattedDate = date.toISOString().split('T')[0];
       const response = await trainService.searchTrains({
-        departure_station: departureId,
-        arrival_station: arrivalId,
+        departure_station: departureId || undefined,
+        arrival_station: arrivalId || undefined,
         date: formattedDate,
       });
       
@@ -203,18 +203,18 @@ function SchedulePageContent() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    if (!departureStationId || !arrivalStationId || !selectedDate) {
+    // Validate form - only date is strictly required now
+    if (!selectedDate) {
       showToast({
         type: 'warning',
         title: 'Form Tidak Lengkap',
-        message: 'Silakan pilih stasiun keberangkatan, tujuan, dan tanggal',
+        message: 'Silakan pilih tanggal keberangkatan',
         duration: 4000
       });
       return;
     }
     
-    if (departureStationId === arrivalStationId) {
+    if (departureStationId && arrivalStationId && departureStationId === arrivalStationId) {
       showToast({
         type: 'error',
         title: 'Stasiun Tidak Valid',
@@ -224,8 +224,11 @@ function SchedulePageContent() {
       return;
     }
     
-    // Save search to recent searches
-    saveSearch(departureStationId, arrivalStationId, selectedDate);
+    // Save search to recent searches only if both stations are selected
+    if (departureStationId && arrivalStationId) {
+      saveSearch(departureStationId, arrivalStationId, selectedDate);
+    }
+    
     searchTrains(departureStationId, arrivalStationId, new Date(selectedDate));
   };  useEffect(() => {
     const departure = searchParams.get('departure');
@@ -234,12 +237,12 @@ function SchedulePageContent() {
 
     fetchStations();
 
-    if (departure && arrival && date) {
-      setDepartureStationId(Number(departure));
-      setArrivalStationId(Number(arrival));
+    if (date) {
+      if (departure) setDepartureStationId(Number(departure));
+      if (arrival) setArrivalStationId(Number(arrival));
       setSelectedDate(new Date(date).toISOString().split('T')[0]);
       setShowAllTrains(false);
-      searchTrains(Number(departure), Number(arrival), new Date(date));
+      searchTrains(departure ? Number(departure) : null, arrival ? Number(arrival) : null, new Date(date));
     } else {
       setSelectedDate(new Date().toISOString().split('T')[0]);
       fetchAllTrains();
@@ -253,8 +256,8 @@ function SchedulePageContent() {
       const arrival = searchParams.get('arrival');
       const date = searchParams.get('date');
       
-      if (departure && arrival && date) {
-        searchTrains(Number(departure), Number(arrival), new Date(date));
+      if (date) {
+        searchTrains(departure ? Number(departure) : null, arrival ? Number(arrival) : null, new Date(date));
       } else {
         fetchAllTrains();
       }
@@ -265,7 +268,9 @@ function SchedulePageContent() {
     const departure = searchParams.get('departure');
     const arrival = searchParams.get('arrival');
     
-    if (!departure && !arrival && stations.length > 1 && !departureStationId && !arrivalStationId) {
+    // Only set default stations if NO search params exist and no stations are selected
+    // Use strict null check to allow 0 (Semua Stasiun) as a valid selected value
+    if (!departure && !arrival && !searchParams.get('date') && stations.length > 1 && departureStationId === null && arrivalStationId === null) {
       setDepartureStationId(stations[0].id);
       setArrivalStationId(stations[1].id);
     }
