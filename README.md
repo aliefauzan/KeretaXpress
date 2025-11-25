@@ -1,4 +1,4 @@
-# ��� KeretaXpress - Modern Train Booking Platform
+# 🚆 KeretaXpress - Modern Train Booking Platform
 
 <div align="center">
 
@@ -16,7 +16,7 @@
 
 ---
 
-## ��� Table of Contents
+## 📚 Table of Contents
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
@@ -30,23 +30,23 @@
 
 ---
 
-## ��� Overview
+## Overview
 
 KeretaXpress is a **modern, full-stack train booking platform** designed for seamless ticket booking experiences. Built with cutting-edge technologies and best practices, it features:
 
-- ��� **Beautiful UI/UX** with Next.js 13+ App Router and Tailwind CSS
+- **Beautiful UI/UX** with Next.js 13+ App Router and Tailwind CSS
 - ⚡ **Real-time Updates** via Server-Sent Events (SSE)
-- ��� **Payment Integration** with Midtrans (Snap + Core API)
-- ��� **Dual Notification System** (Webhook + Admin Manual)
+- **Payment Integration** with Midtrans (Snap + Core API)
+- **Dual Notification System** (Webhook + Admin Manual)
 - ☁️ **Cloud-Native Architecture** on Google Cloud Platform
-- ��� **Enterprise Security** with JWT authentication
-- ��� **Responsive Design** optimized for all devices
+- **Enterprise Security** with JWT authentication
+- **Responsive Design** optimized for all devices
 
 ---
 
 ## ✨ Key Features
 
-### ��� **Customer Features**
+### Customer Features
 1. **User Authentication** - Secure registration and login with JWT
 2. **Train Search** - Advanced search by route, date, and class
 3. **Seat Selection** - Interactive seat map with real-time availability
@@ -60,7 +60,7 @@ KeretaXpress is a **modern, full-stack train booking platform** designed for sea
 11. **QR Code Payment** - Generate QRIS for cashless payment
 12. **View Notifications** - Real-time notification center
 
-### ���‍��� **Admin Features**
+### Admin Features
 13. **Admin Login** - Separate admin authentication system
 14. **Train Management** - CRUD operations for train schedules
 15. **Booking Overview** - Real-time booking dashboard with SSE
@@ -78,74 +78,74 @@ KeretaXpress is a **modern, full-stack train booking platform** designed for sea
 
 ---
 
-## ���️ Architecture
+## Architecture
 
-### **System Architecture**
+### System Architecture
 
-\`\`\`
-┌─────────────────────────────────────────────────────────────────┐
-│                     FRONTEND (Next.js 15)                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────┐  │
-│  │  Customer UI │  │   Admin UI   │  │   SSE Connections   │  │
-│  └──────────────┘  └──────────────┘  └─────────────────────┘  │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │ HTTPS / REST / SSE
-┌───────────────────────────┴─────────────────────────────────────┐
-│              BACKEND (Node.js + Express.js)                     │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐  │
-│  │  REST API Routes │  │  SSE Streaming   │  │  Scheduler   │  │
-│  │  - Auth          │  │  - Notifications │  │  - Cleanup   │  │
-│  │  - Trains        │  │  - Admin Bookings│  │              │  │
-│  │  - Bookings      │  │  - Booking Status│  │              │  │
-│  │  - Payments      │  └──────────────────┘  └──────────────┘  │
-│  └──────────────────┘                                           │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-┌───────▼────────┐  ┌───────▼────────┐  ┌──────▼─────────┐
-│   Supabase     │  │    Midtrans    │  │  Cloud         │
-│   PostgreSQL   │  │    Payment     │  │  Scheduler     │
-│   - Users      │  │    Gateway     │  │  - Cron Jobs   │
-│   - Trains     │  │    - Snap API  │  │  - Cleanup     │
-│   - Bookings   │  │    - Core API  │  │                │
-└────────────────┘  └────────────────┘  └────────────────┘
-\`\`\`
+```
++-----------------------------------------------------------------+
+|                     FRONTEND (Next.js 15)                       |
+|  +---------------+  +--------------+  +---------------------+  |
+|  |  Customer UI  |  |   Admin UI   |  |   SSE Connections   |  |
+|  +---------------+  +--------------+  +---------------------+  |
++---------------------------|-------------------------------------+
+                            | HTTPS / REST / SSE
++---------------------------|-------------------------------------+
+|              BACKEND (Node.js + Express.js)                     |
+|  +-------------------+  +-------------------+  +---------------+|
+|  |  REST API Routes  |  |   SSE Streaming   |  |   Scheduler   |  |
+|  |  - Auth           |  |  - Notifications  |  |  - Cleanup    |  |
+|  |  - Trains         |  |  - Admin Bookings |  |               |  |
+|  |  - Bookings       |  |  - Booking Status |  |               |  |
+|  |  - Payments       |  +-------------------+  +---------------+  |
+|  +-------------------+                                            |
++---------------------------|-------------------------------------+
+                            |
+        +-------------------+-------------------+
+        |                   |                   |
++-------+--------+  +-------+--------+  +-------+--------+
+|   Supabase     |  |    Midtrans    |  |  Cloud         |
+|   PostgreSQL   |  |    Payment     |  |  Scheduler     |
+|   - Users      |  |    Gateway     |  |  - Cron Jobs   |
+|   - Trains     |  |    - Snap API  |  |  - Cleanup     |
+|   - Bookings   |  |    - Core API  |  |                |
++----------------+  +----------------+  +----------------+
+```
 
-### **Real-time Notification Flow**
+### Real-time Notification Flow
 
-\`\`\`
-┌──────────────────────────────────────────────────────────────┐
-│                    NOTIFICATION SOURCES                       │
-└────────────────┬─────────────────────────────────┬───────────┘
-                 │                                 │
-        ┌────────▼────────┐               ┌────────▼────────┐
-        │     Midtrans    │               │  Admin Manual   │
-        │     Webhook     │               │  Confirmation   │
-        │  (Automatic)    │               │   (Manual)      │
-        └────────┬────────┘               └────────┬────────┘
-                 │                                 │
-                 │         triggered_by:           │
-                 │      'midtrans' | 'admin'       │
-                 │                                 │
-        ┌────────▼─────────────────────────────────▼────────┐
-        │            Notification Controller                │
-        │  - Creates notification in database               │
-        │  - Triggers SSE event to connected clients        │
-        └───────────────────────┬───────────────────────────┘
-                                │
-                ┌───────────────┴───────────────┐
-                │                               │
-        ┌───────▼───────┐              ┌────────▼────────┐
-        │  Customer UI  │              │   Admin UI      │
-        │  - Toast      │              │   - Dashboard   │
-        │  - Badge      │              │   - Alerts      │
-        └───────────────┘              └─────────────────┘
-\`\`\`
+```
++--------------------------------------------------------------+
+|                    NOTIFICATION SOURCES                      |
++----------------+---------------------------------+-----------+
+                 |                                 |
+        +--------+--------+               +--------+--------+
+        |     Midtrans    |               |  Admin Manual   |
+        |     Webhook     |               |  Confirmation   |
+        |  (Automatic)    |               |   (Manual)      |
+        +--------+--------+               +--------+--------+
+                 |                                 |
+                 |         triggered_by:           |
+                 |      'midtrans' | 'admin'       |
+                 |                                 |
+        +--------+---------------------------------+--------+
+        |            Notification Controller                |
+        |  - Creates notification in database               |
+        |  - Triggers SSE event to connected clients        |
+        +-----------------------+---------------------------+
+                                |
+                +---------------+---------------+
+                |                               |
+        +-------+-------+              +--------+--------+
+        |  Customer UI  |              |   Admin UI      |
+        |  - Toast      |              |   - Dashboard   |
+        |  - Badge      |              |   - Alerts      |
+        +---------------+              +-----------------+
+```
 
 ---
 
-## ���️ Tech Stack
+## Tech Stack
 
 ### **Frontend (Web)**
 - **Framework**: Next.js 15.3.2 (App Router)
@@ -197,7 +197,7 @@ KeretaXpress is a **modern, full-stack train booking platform** designed for sea
 
 ---
 
-## ��� Project Structure
+## Project Structure
 
 \`\`\`
 KeretaXpress/
@@ -264,7 +264,7 @@ KeretaXpress/
 
 ---
 
-## ��� Quick Start
+## Quick Start
 
 ### **Prerequisites**
 - Node.js 18+ and npm
@@ -308,7 +308,7 @@ npm run dev  # http://localhost:3001
 
 ---
 
-## ��� Documentation
+## Documentation
 
 ### **Architecture & Design**
 - [Class Diagrams](./PlantUML_ClassDiagrams.md) - Complete system architecture
@@ -341,7 +341,7 @@ vercel --prod
 
 ---
 
-## ��� API Reference
+## API Reference
 
 ### **Authentication**
 \`\`\`http
@@ -387,7 +387,7 @@ Authorization: Bearer <jwt-token>
 
 ---
 
-## ��� Notification System
+## Notification System
 
 ### **Dual-Source Notifications**
 
@@ -404,7 +404,7 @@ Both create identical notification types and broadcast via SSE.
 
 ---
 
-## ��� License
+## License
 
 MIT License - See [LICENSE](LICENSE) file
 
@@ -412,7 +412,7 @@ MIT License - See [LICENSE](LICENSE) file
 
 <div align="center">
 
-**��� KeretaXpress - Making train travel booking simple, fast, and beautiful**
+**KeretaXpress - Making train travel booking simple, fast, and beautiful**
 
 [![Documentation](https://img.shields.io/badge/Docs-Complete-green?style=for-the-badge)](./PlantUML_ClassDiagrams.md)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)

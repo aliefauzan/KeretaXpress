@@ -67,7 +67,7 @@ backend/JavaScript/
 │   ├── stationController.js     # Station CRUD operations
 │   └── notificationController.js # Notification management
 │
-├── middleware/                  # Express middleware
+├── middlerware/                 # Express middleware
 │   ├── authMiddleware.js        # JWT verification for customers
 │   └── adminMiddleware.js       # Admin authorization checks
 │
@@ -91,7 +91,9 @@ backend/JavaScript/
 │   ├── notificationStreamRoutes.js # SSE: Customer notifications
 │   ├── adminStreamRoutes.js     # SSE: Admin dashboard updates
 │   ├── bookingStreamRoutes.js   # SSE: Booking status changes
-│   └── schedulerRoutes.js       # /api/scheduler/* (Cloud Scheduler jobs)
+│   ├── schedulerRoutes.js       # /api/scheduler/* (Cloud Scheduler jobs)
+│   ├── maintenance.js           # Train maintenance routes
+│   └── maintenanceStreamRoutes.js # SSE: Real-time maintenance updates
 │
 ├── services/                    # External service integrations
 │   ├── supabaseService.js       # Supabase Storage client
@@ -138,7 +140,186 @@ backend/JavaScript/
 - **Midtrans Account**: For payment gateway (Sandbox or Production)
 - **Google Cloud Account**: For deployment (optional, for production)
 
-## 📦 Installation
+---
+
+## ⏰ Booking Expiration System
+
+### **Hybrid Approach: Per-Booking Timers + Scheduler Backup**
+
+KeretaXpress uses a **hybrid system** combining efficient per-booking timers with a scheduler backup:
+
+**Primary System: Per-Booking Timers**
+✅ **Precise 30-minute expiration** (exact timing for each booking)  
+✅ **Efficient** (only runs for bookings that exist)  
+✅ **Real-time** (expires immediately when timer fires)  
+✅ **Cost-effective** (no Cloud Scheduler needed for normal operation)
+
+**Backup System: Scheduler Safety Net**
+✅ **Catches missed bookings** (if server crashes or timer fails)  
+✅ **Recovery mechanism** (processes overdue bookings)  
+✅ **Monitoring capability** (reports system health)  
+✅ **Optional** (can run hourly/daily as safety check)
+
+### **How It Works**
+
+```javascript
+// PRIMARY: Per-Booking Timer (Normal Flow)
+// 1. User creates booking at 10:00 PM
+BookingController.book() → scheduleExpiration(transactionId, 30 minutes)
+
+// 2. Timer fires at 10:30 PM (exactly 30 minutes later)
+setTimeout(() => expireBooking(transactionId), 30 * 60 * 1000)
+
+// 3. Booking expired automatically ✅
+
+// BACKUP: Scheduler (Safety Net)
+// Runs hourly/daily to catch any bookings timers missed
+Cloud Scheduler (every 1 hour)
+  ↓
+POST /api/scheduler/cleanup-bookings
+  ↓
+Query: SELECT bookings WHERE pending AND > 30 minutes old
+  ↓
+For each: expireBooking(transactionId) // Uses same service
+  ↓
+Report: "Found 0 overdue bookings" (if timers working) ✅
+```
+
+### **Advantages Over Single-System Approaches**
+
+| Feature | Hybrid (Current) | Timer-Only | Scheduler-Only |
+|---------|------------------|------------|----------------|
+| Precision | Exact 30 minutes | Exact 30 minutes | Depends on cron |
+| Resource Usage | Minimal | Minimal | High (queries all) |
+| Reliability | Very High | Medium | High |
+| Server Restart | Auto-recovers | Needs restoration | No impact |
+| Edge Cases | Catches all | Might miss some | Catches all |
+| Cost | Very Low | Free | Cloud Scheduler fees |
+
+### **System Architecture**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Booking Created (10:00 PM)                  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+         ┌───────────┴────────────┐
+         │                        │
+         ▼                        ▼
+┌─────────────────┐      ┌──────────────────┐
+│ PRIMARY SYSTEM  │      │  BACKUP SYSTEM   │
+│  (Timers)       │      │  (Scheduler)     │
+├─────────────────┤      ├──────────────────┤
+│ ⏰ 30 min timer │      │ 🕐 Hourly check  │
+│ Fires: 10:30 PM │      │ Runs: 11:00 PM   │
+│                 │      │ Finds: 0 overdue │
+│ ✅ Expires      │      │ ✅ All clear     │
+└─────────────────┘      └──────────────────┘
+         │                        │
+         └───────────┬────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │ bookingExpiration   │
+         │    Service          │
+         │ (Shared Logic)      │
+         └─────────────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │ • Update status     │
+         │ • Restore seat      │
+         │ • Send notification │
+         └─────────────────────┘
+```
+
+### **Timer Restoration on Server Restart**
+
+```javascript
+// On server startup, restore timers for pending bookings
+await bookingExpirationService.restoreTimers();
+
+// For each pending booking:
+// - If already expired (> 30 min) → Expire immediately
+// - If still valid (< 30 min) → Schedule remaining time
+
+// Example: Server restarts at 10:20 PM
+// Booking created at 10:00 PM
+// Remaining time: 10 minutes
+// New timer scheduled for 10:30 PM ✅
+```
+
+### **Scheduler Endpoints**
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/scheduler/cleanup-bookings` | POST | Main backup cleanup (called by Cloud Scheduler) |
+| `/api/scheduler/restore-timers` | POST | Manually trigger timer restoration |
+| `/api/scheduler/health` | GET | Health check + active timer count |
+| `/api/scheduler/status` | GET | Detailed system status + overdue count |
+
+### **Optional: Cloud Scheduler Setup**
+
+```bash
+# Create hourly backup cleanup job (optional safety net)
+gcloud scheduler jobs create http cleanup-expired-bookings-backup \
+  --schedule="0 * * * *" \
+  --uri="https://your-api.run.app/api/scheduler/cleanup-bookings" \
+  --http-method=POST \
+  --time-zone="Asia/Jakarta" \
+  --headers="Authorization=Bearer YOUR_SCHEDULER_TOKEN"
+
+# Or for more frequent checks (every 15 minutes)
+# --schedule="*/15 * * * *"
+
+# Expected result in logs when timers are working:
+# "Found 0 overdue bookings - all timers working correctly" ✅
+```
+
+### **Implementation Files**
+
+- **Service**: `services/bookingExpirationService.js` (shared expiration logic)
+- **Routes**: `routes/schedulerRoutes.js` (backup scheduler endpoints)
+- **Booking Creation**: `controllers/bookingController.js` (schedules timer)
+- **Payment Success**: `controllers/paymentController.js` (cancels timer)
+- **Admin Confirmation**: `controllers/adminController.js` (cancels timer)
+- **Server Startup**: `server.js` (restores timers + registers scheduler routes)
+
+### **Monitoring & Testing**
+
+**Check Timer Status:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-api.run.app/api/scheduler/status
+
+# Response:
+{
+  "active_timers": 5,
+  "pending_bookings": 5,
+  "expired_overdue": 0,  // Should be 0 if timers working
+  "system": "Per-booking timers with scheduler backup"
+}
+```
+
+**Manual Cleanup Test:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-api.run.app/api/scheduler/cleanup-bookings
+
+# Response:
+{
+  "success": true,
+  "count": 0,  // 0 means timers caught everything
+  "message": "No expired bookings found"
+}
+```
+
+---
+
+## 🚀 Deployment to Google Cloud Run
+
+### **Prerequisites**
 
 1. **Navigate to backend directory**:
    ```bash
@@ -588,7 +769,7 @@ curl -N -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ### **Google Cloud Run Deployment**
 
-#### **1. Deploy Main API Server**
+#### **Deploy Main API Server**
 ```bash
 cd backend/JavaScript
 
@@ -605,34 +786,6 @@ gcloud run deploy keretaxpress-api \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars="DB_HOST=your-db-host,DB_PASSWORD=your-db-password,JWT_SECRET=your-jwt-secret"
-```
-
-#### **2. Deploy Scheduler Service**
-```bash
-# Build and deploy scheduler
-gcloud builds submit --config cloudbuild-scheduler.yaml
-
-# Or manual deployment
-docker build -f Dockerfile.scheduler -t gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler .
-docker push gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler
-
-gcloud run deploy keretaxpress-scheduler \
-  --image gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler \
-  --platform managed \
-  --region us-central1 \
-  --no-allow-unauthenticated
-```
-
-#### **3. Configure Cloud Scheduler**
-```bash
-# Create cron job to cleanup expired bookings (runs daily at 2 AM Jakarta time)
-gcloud scheduler jobs create http cleanup-expired-bookings \
-  --schedule="0 2 * * *" \
-  --uri="https://keretaxpress-scheduler-XXXXX.a.run.app/api/scheduler/cleanup-bookings" \
-  --http-method=POST \
-  --time-zone="Asia/Jakarta" \
-  --oidc-service-account-email=YOUR_SERVICE_ACCOUNT@YOUR_PROJECT.iam.gserviceaccount.com \
-  --oidc-token-audience="https://keretaxpress-scheduler-XXXXX.a.run.app"
 ```
 
 ### **Environment Variables for Production**
