@@ -199,68 +199,50 @@ KeretaXpress is a **modern, full-stack train booking platform** designed for sea
 
 ## Project Structure
 
-\`\`\`
+```text
 KeretaXpress/
 ├── web_version/                    # Next.js 15 Frontend (App Router)
 │   ├── src/
 │   │   ├── app/                    # App Router pages
-│   │   │   ├── page.tsx           # Homepage (/)
-│   │   │   ├── schedule/          # Train search (/schedule)
-│   │   │   ├── seat-selection/    # Seat picker (/seat-selection)
-│   │   │   ├── passenger-info/    # Passenger form (/passenger-info)
-│   │   │   ├── payment/           # Payment page (/payment)
-│   │   │   ├── booking-history/   # Booking history (/booking-history)
-│   │   │   ├── admin/             # Admin dashboard (/admin)
-│   │   │   ├── login/             # Login page (/login)
-│   │   │   └── register/          # Register page (/register)
-│   │   ├── components/            # Reusable React components
-│   │   ├── lib/                   # API client and utilities
-│   │   │   └── api.ts            # Object-based services
-│   │   ├── hooks/                 # Custom React hooks
+│   │   │   ├── page.tsx            # Homepage (/)
+│   │   │   ├── schedule/           # Train search (/schedule)
+│   │   │   ├── seat-selection/     # Seat picker (/seat-selection)
+│   │   │   ├── passenger-info/     # Passenger form (/passenger-info)
+│   │   │   ├── payment/            # Payment page (/payment)
+│   │   │   ├── booking-history/    # Booking history (/booking-history)
+│   │   │   ├── admin/              # Admin dashboard (/admin)
+│   │   │   ├── login/              # Login page (/login)
+│   │   │   └── register/           # Register page (/register)
+│   │   ├── components/             # Reusable React components
+│   │   ├── lib/                    # API client and utilities
+│   │   │   └── api.ts              # Object-based services
+│   │   ├── hooks/                  # Custom React hooks
 │   │   │   └── useNotifications.ts # SSE + polling hook
-│   │   ├── contexts/              # React Context providers
-│   │   ├── types/                 # TypeScript definitions
-│   │   └── styles/                # Global styles
-│   ├── Dockerfile                 # Container config
-│   ├── cloudbuild.yaml           # GCP deployment
-│   └── package.json              # Dependencies
+│   │   ├── contexts/               # React Context providers
+│   │   ├── types/                  # TypeScript definitions
+│   │   └── styles/                 # Global styles
+│   ├── Dockerfile                  # Container config
+│   ├── cloudbuild.yaml             # GCP deployment
+│   └── package.json                # Dependencies
 │
-├── backend/JavaScript/            # Node.js + Express.js Backend
-│   ├── controllers/              # Request handlers
-│   │   ├── authController.js
-│   │   ├── trainController.js
-│   │   ├── bookingController.js
-│   │   ├── paymentController.js
-│   │   ├── adminController.js
-│   │   ├── stationController.js
-│   │   └── notificationController.js
-│   ├── routes/                   # API endpoints
-│   │   ├── authRoutes.js
-│   │   ├── trainRoutes.js
-│   │   ├── bookingRoutes.js
-│   │   ├── paymentRoutes.js
-│   │   ├── adminRoutes.js
-│   │   ├── stationRoutes.js
-│   │   ├── notificationRoutes.js
-│   │   ├── notificationStreamRoutes.js
-│   │   ├── adminStreamRoutes.js
-│   │   ├── bookingStreamRoutes.js
-│   │   └── schedulerRoutes.js
-│   ├── models/                   # Data models
-│   ├── middleware/               # Express middleware
-│   ├── services/                 # Business logic
-│   ├── migrations/               # Database migrations
-│   ├── Dockerfile                # Container config
-│   ├── cloudbuild-scheduler.yaml # Scheduler deployment
-│   └── scheduler-server.js       # Cron job server
+├── backend/JavaScript/             # Node.js + Express.js Backend
+│   ├── controllers/                # Request handlers
+│   ├── routes/                     # API endpoints
+│   ├── models/                     # Data models
+│   ├── middleware/                 # Express middleware
+│   ├── services/                   # Business logic
+│   ├── migrations/                 # Database migrations
+│   ├── Dockerfile                  # Container config
+│   ├── cloudbuild-scheduler.yaml   # Scheduler deployment
+│   └── scheduler-server.js         # Cron job server
 │
-├── PlantUML_ClassDiagrams.md     # Architecture diagrams
+├── PlantUML_ClassDiagrams.md       # Architecture diagrams
 ├── PlantUML_UseCaseClassDiagrams.md
 ├── SequenceDiagram.md
 ├── Usecase.md
 ├── Docker-compose.yaml
 └── README.md
-\`\`\`
+```
 
 ---
 
