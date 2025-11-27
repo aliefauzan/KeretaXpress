@@ -256,7 +256,7 @@ KeretaXpress/
 
 ### **Backend Setup**
 
-\`\`\`bash
+```bash
 cd backend/JavaScript
 npm install
 
@@ -268,11 +268,11 @@ npm run migrate
 
 # Start server
 npm run dev  # http://localhost:3000
-\`\`\`
+```
 
 ### **Frontend Setup**
 
-\`\`\`bash
+```bash
 cd web_version
 npm install
 
@@ -281,7 +281,7 @@ echo "NEXT_PUBLIC_API_URL=http://localhost:3000/api" > .env.local
 
 # Start development
 npm run dev  # http://localhost:3001
-\`\`\`
+```
 
 ### **Access**
 - **Frontend**: http://localhost:3001
@@ -308,64 +308,93 @@ npm run dev  # http://localhost:3001
 ## ☁️ Deployment
 
 ### **Backend (Google Cloud Run)**
-\`\`\`bash
+```bash
 cd backend/JavaScript
 gcloud builds submit --config cloudbuild.yaml
 gcloud builds submit --config cloudbuild-scheduler.yaml
-\`\`\`
+```
 
 ### **Frontend (Vercel)**
-\`\`\`bash
+```bash
 cd web_version
 npm i -g vercel
 vercel --prod
-\`\`\`
+```
 
 ---
 
 ## API Reference
 
 ### **Authentication**
-\`\`\`http
-POST   /api/register          # User registration
-POST   /api/login             # User login (JWT)
-POST   /api/admin/login       # Admin login
-GET    /api/user/:id?         # Get user info
-\`\`\`
+```http
+POST /api/register
+# User registration
+
+POST /api/login
+# User login (returns JWT token)
+
+POST /api/admin/login
+# Admin login (returns admin JWT token)
+
+GET /api/user/:id?
+# Get user profile information (id is optional)
+```
 
 ### **Trains**
-\`\`\`http
-GET    /api/trains/all        # All trains
-GET    /api/trains/search     # Search with filters
-GET    /api/trains/promo      # Promotional trains
-\`\`\`
+```http
+GET /api/trains/all
+# Get all available trains
+
+GET /api/trains/search
+# Search trains with filters (departure_station, arrival_station, date, class_type)
+
+GET /api/trains/promo
+# Get promotional/featured trains
+```
 
 ### **Bookings**
-\`\`\`http
-POST   /api/bookings          # Create booking
-GET    /api/bookings/history  # User history
-PUT    /api/bookings/:id/status # Update status
-\`\`\`
+```http
+POST /api/bookings
+# Create new booking
+
+GET /api/bookings/history
+# Get user booking history
+
+PUT /api/bookings/:id/status
+# Update booking status
+```
 
 ### **Payments**
-\`\`\`http
-POST   /api/payments/midtrans/snap # Snap token
-POST   /api/payments/midtrans/qris # QRIS code
-POST   /api/payments/midtrans/webhook # Webhook
-POST   /api/admin/payments/confirm # Manual confirm
-\`\`\`
+```http
+POST /api/payments/midtrans/snap
+# Create Midtrans Snap token for payment
+
+POST /api/payments/midtrans/qris
+# Generate QRIS code for payment
+
+POST /api/payments/midtrans/webhook
+# Midtrans webhook for payment notifications
+
+POST /api/admin/payments/confirm
+# Admin manual payment confirmation
+```
 
 ### **Notifications (SSE)**
-\`\`\`http
-GET    /api/notifications/stream # Customer SSE
-GET    /api/admin/notifications/stream # Admin SSE
-GET    /api/bookings/stream # Booking updates
-\`\`\`
+```http
+GET /api/notifications/stream
+# Customer real-time notifications (Server-Sent Events)
+
+GET /api/admin/notifications/stream
+# Admin real-time notifications (Server-Sent Events)
+
+GET /api/bookings/stream
+# Booking status updates (Server-Sent Events)
+```
 
 **Authentication**: Bearer token required
-\`\`\`http
+```http
 Authorization: Bearer <jwt-token>
-\`\`\`
+```
 
 ---
 
@@ -376,11 +405,11 @@ Authorization: Bearer <jwt-token>
 1. **Midtrans Webhook (Automatic)**
    - Payment completion triggers webhook
    - Signature verification
-   - \`triggered_by='midtrans'\`
+   - `triggered_by='midtrans'`
 
 2. **Admin Manual Confirmation**
    - Admin confirms payment in dashboard
-   - \`triggered_by='admin'\`
+   - `triggered_by='admin'`
 
 Both create identical notification types and broadcast via SSE.
 

@@ -518,20 +518,29 @@ Server will start on `http://localhost:3000` (or the PORT specified in `.env`)
 
 #### **Authentication**
 ```http
-POST   /api/register
-POST   /api/login
-POST   /api/admin/login
+POST /api/register
+# Register new user account
+
+POST /api/login
+# User login (returns JWT token)
+
+POST /api/admin/login
+# Admin login (returns admin JWT token)
 ```
 
 #### **Stations** (Public Data)
 ```http
-GET    /api/stations              # Get all stations
-GET    /api/stations/:id          # Get station by ID
+GET /api/stations
+# Get all train stations
+
+GET /api/stations/:id
+# Get specific station by ID
 ```
 
 #### **Trains** (Public Browse)
 ```http
-GET    /api/trains/all            # Get all available trains
+GET /api/trains/all
+# Get all available trains
 ```
 
 ---
@@ -540,70 +549,97 @@ GET    /api/trains/all            # Get all available trains
 
 #### **User Authentication**
 ```http
-POST   /api/logout                # Logout user
-GET    /api/user/:id?             # Get user profile
+POST /api/logout
+# Logout current user
+
+GET /api/user/:id?
+# Get user profile (id is optional, defaults to current user)
 ```
 
-#### **Train Search & Management**
+#### **Train Search &amp; Management**
 ```http
-GET    /api/trains/search         # Search trains by filters
-  Query Params:
-  - departure_station: integer (required)
-  - arrival_station: integer (required)
-  - date: YYYY-MM-DD (required)
-  - class_type: string (optional: ekonomi, bisnis, eksekutif)
+GET /api/trains/search
+# Search trains with filters
+# Query Parameters:
+#   - departure_station: integer (required)
+#   - arrival_station: integer (required)
+#   - date: YYYY-MM-DD (required)
+#   - class_type: string (optional: ekonomi, bisnis, eksekutif)
 
-GET    /api/trains/promo          # Get promotional trains
-GET    /api/trains/:id            # Get train details by ID
-GET    /api/trains/:id/available-seats?date=YYYY-MM-DD  # Available seats
+GET /api/trains/promo
+# Get promotional trains
+
+GET /api/trains/:id
+# Get train details by ID
+
+GET /api/trains/:id/available-seats?date=YYYY-MM-DD
+# Get available seats for specific train and date
 ```
 
 #### **Bookings**
 ```http
-POST   /api/bookings              # Create new booking
-  Body: {
-    train_id, travel_date, passenger_name,
-    passenger_id_number, passenger_dob, passenger_gender,
-    seat_number, payment_method
-  }
+POST /api/bookings
+# Create new booking
+# Body: {
+#   train_id: integer,
+#   travel_date: string (YYYY-MM-DD),
+#   passenger_name: string,
+#   passenger_id_number: string,
+#   passenger_dob: string (YYYY-MM-DD),
+#   passenger_gender: string (male/female),
+#   seat_number: string,
+#   payment_method: string
+# }
 
-GET    /api/bookings/history      # Get booking history
-  Query Params:
-  - user_uuid: UUID (optional, admin only)
-  - status: string (optional: pending, confirmed, cancelled, paid)
+GET /api/bookings/history
+# Get booking history
+# Query Parameters:
+#   - user_uuid: UUID (optional, admin only)
+#   - status: string (optional: pending, confirmed, cancelled, paid)
 
-PUT    /api/bookings/:transactionId/status  # Update booking status
-  Body: { status: string }
+PUT /api/bookings/:transactionId/status
+# Update booking status
+# Body: { status: string }
 ```
 
 #### **Payments**
 ```http
-POST   /api/payments/:id/upload   # Upload payment proof (multipart/form-data)
-  Body: payment_proof (file)
+POST /api/payments/:id/upload
+# Upload payment proof (multipart/form-data)
+# Body: payment_proof (file)
 
-POST   /api/payments/midtrans/snap  # Create Midtrans Snap transaction
-  Body: { booking_id: integer }
-  Returns: { snap_token, snap_url }
+POST /api/payments/midtrans/snap
+# Create Midtrans Snap transaction
+# Body: { booking_id: integer }
+# Returns: { snap_token: string, snap_url: string }
 
-POST   /api/payments/midtrans/qris  # Generate QRIS code
-  Body: { booking_id: integer }
-  Returns: { qr_code: base64_string }
+POST /api/payments/midtrans/qris
+# Generate QRIS code for payment
+# Body: { booking_id: integer }
+# Returns: { qr_code: string (base64) }
 
-POST   /api/payments/midtrans/webhook  # Midtrans notification (PUBLIC)
-  Headers: X-Midtrans-Signature
-  Body: Midtrans notification payload
+POST /api/payments/midtrans/webhook
+# Midtrans webhook for payment notifications (PUBLIC)
+# Headers: X-Midtrans-Signature
+# Body: Midtrans notification payload
 ```
 
 #### **Notifications**
 ```http
-GET    /api/notifications         # Get user notifications
-  Query Params:
-  - unread: boolean (optional)
-  - limit: integer (optional, default: 50)
+GET /api/notifications
+# Get user notifications
+# Query Parameters:
+#   - unread: boolean (optional)
+#   - limit: integer (optional, default: 50)
 
-PUT    /api/notifications/:id/read  # Mark notification as read
-PUT    /api/notifications/read-all  # Mark all as read
-DELETE /api/notifications/:id     # Delete notification
+PUT /api/notifications/:id/read
+# Mark notification as read
+
+PUT /api/notifications/read-all
+# Mark all notifications as read
+
+DELETE /api/notifications/:id
+# Delete specific notification
 ```
 
 ---
@@ -612,34 +648,47 @@ DELETE /api/notifications/:id     # Delete notification
 
 #### **Train Management**
 ```http
-POST   /api/admin/trains          # Create new train
-PUT    /api/admin/trains/:id      # Update train
-DELETE /api/admin/trains/:id      # Delete train
+POST /api/admin/trains
+# Create new train schedule
+
+PUT /api/admin/trains/:id
+# Update existing train schedule
+
+DELETE /api/admin/trains/:id
+# Delete train schedule
 ```
 
 #### **Station Management**
 ```http
-POST   /api/admin/stations        # Create new station
-PUT    /api/admin/stations/:id    # Update station
-DELETE /api/admin/stations/:id    # Delete station
+POST /api/admin/stations
+# Create new station
+
+PUT /api/admin/stations/:id
+# Update existing station
+
+DELETE /api/admin/stations/:id
+# Delete station
 ```
 
 #### **Booking Management**
 ```http
-GET    /api/admin/bookings        # Get all bookings
-  Query Params:
-  - status: string (optional)
-  - date_from: YYYY-MM-DD (optional)
-  - date_to: YYYY-MM-DD (optional)
+GET /api/admin/bookings
+# Get all bookings with filters
+# Query Parameters:
+#   - status: string (optional)
+#   - date_from: YYYY-MM-DD (optional)
+#   - date_to: YYYY-MM-DD (optional)
 
-GET    /api/admin/bookings/analytics  # Get booking statistics
-  Returns: { total_bookings, total_revenue, status_breakdown }
+GET /api/admin/bookings/analytics
+# Get booking statistics and analytics
+# Returns: { total_bookings, total_revenue, status_breakdown }
 ```
 
 #### **Payment Confirmation**
 ```http
-POST   /api/admin/payments/confirm  # Manually confirm payment
-  Body: { booking_id: integer, notes: string }
+POST /api/admin/payments/confirm
+# Manually confirm payment
+# Body: { booking_id: integer, notes: string }
 ```
 
 ---
@@ -647,21 +696,24 @@ POST   /api/admin/payments/confirm  # Manually confirm payment
 ### ⚡ **Real-time Endpoints** (SSE Streams)
 
 ```http
-GET    /api/notifications/stream  # Customer notifications (SSE)
-  Headers: Authorization: Bearer <token>
-  Stream: text/event-stream
-  Events: notification, booking_update
+GET /api/notifications/stream
+# Customer real-time notifications (Server-Sent Events)
+# Headers: Authorization: Bearer <token>
+# Stream: text/event-stream
+# Events: notification, booking_update
 
-GET    /api/admin/notifications/stream  # Admin notifications (SSE)
-  Headers: Authorization: Bearer <admin-token>
-  Stream: text/event-stream
-  Events: new_booking, payment_pending
+GET /api/admin/notifications/stream
+# Admin real-time notifications (Server-Sent Events)
+# Headers: Authorization: Bearer <admin-token>
+# Stream: text/event-stream
+# Events: new_booking, payment_pending
 
-GET    /api/bookings/stream       # Booking status updates (SSE)
-  Headers: Authorization: Bearer <token>
-  Query Params: user_uuid (optional, for filtering)
-  Stream: text/event-stream
-  Events: booking_confirmed, booking_cancelled
+GET /api/bookings/stream
+# Booking status updates (Server-Sent Events)
+# Headers: Authorization: Bearer <token>
+# Query Parameters: user_uuid (optional, for filtering)
+# Stream: text/event-stream
+# Events: booking_confirmed, booking_cancelled
 ```
 
 ---
@@ -669,9 +721,10 @@ GET    /api/bookings/stream       # Booking status updates (SSE)
 ### 🤖 **Scheduler Endpoints** (Internal, Cloud Scheduler Only)
 
 ```http
-POST   /api/scheduler/cleanup-bookings  # Cleanup expired bookings
-  Authorization: Cloud Scheduler service account
-  Returns: { cleaned: count, message: string }
+POST /api/scheduler/cleanup-bookings
+# Cleanup expired bookings (called by Cloud Scheduler)
+# Authorization: Cloud Scheduler service account
+# Returns: { cleaned: number, message: string }
 ```
 
 ---
