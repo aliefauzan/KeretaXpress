@@ -49,35 +49,57 @@ const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ['*'];
 
+const isProduction = process.env.APP_ENV === 'production';
+
 const originIsAllowed = (origin) => {
-  if (!origin) return true; // allow server-to-server or same-origin requests without Origin
-  if (corsOrigins.includes('*')) return true;
+  // In production, require an Origin header (disallow requests without Origin)
+  if (!origin) return !isProduction;
+
+  if (corsOrigins.includes('*')) {
+    if (isProduction) {
+      console.warn('CORS: wildcard "*" present in CORS_ORIGIN but running in production — rejecting for safety');
+      return false;
+    }
+    return true;
+  }
+
   if (corsOrigins.includes(origin)) return true;
+
   for (const o of corsOrigins) {
     if (o.startsWith('*.')) {
       const suffix = o.slice(1);
       if (origin.endsWith(suffix)) return true;
     }
   }
+
   return false;
 };
 
-app.use(cors({
+// CORS options: set optionsSuccessStatus and maxAge for preflight caching
+const corsOptions = {
   origin: (origin, callback) => {
     const allowed = originIsAllowed(origin);
-    if (!allowed) {
-      console.warn(`CORS: rejected origin '${origin}'`);
-    }
-    // callback expects (err, allow)
+    if (!allowed) console.warn(`CORS: rejected origin '${origin}'`);
+    // When allowed, callback with true so the middleware echoes the request Origin
     callback(null, allowed);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+  maxAge: parseInt(process.env.CORS_PREFLIGHT_MAX_AGE || '86400', 10)
+};
+
+// Add Vary: Origin header for proper caching behavior
+app.use((req, res, next) => {
+  res.setHeader('Vary', 'Origin');
+  next();
+});
+
+app.use(cors(corsOptions));
 
 // Ensure preflight OPTIONS requests are handled and receive proper CORS headers
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
