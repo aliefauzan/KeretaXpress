@@ -49,21 +49,35 @@ const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ['*'];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is in the allowed list
-    if (corsOrigins.includes('*') || corsOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+const originIsAllowed = (origin) => {
+  if (!origin) return true; // allow server-to-server or same-origin requests without Origin
+  if (corsOrigins.includes('*')) return true;
+  if (corsOrigins.includes(origin)) return true;
+  for (const o of corsOrigins) {
+    if (o.startsWith('*.')) {
+      const suffix = o.slice(1);
+      if (origin.endsWith(suffix)) return true;
     }
+  }
+  return false;
+};
+
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = originIsAllowed(origin);
+    if (!allowed) {
+      console.warn(`CORS: rejected origin '${origin}'`);
+    }
+    // callback expects (err, allow)
+    callback(null, allowed);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Ensure preflight OPTIONS requests are handled and receive proper CORS headers
+app.options('*', cors());
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
