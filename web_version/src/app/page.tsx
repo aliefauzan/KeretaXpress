@@ -37,26 +37,22 @@ export default function Home() {
 
 
   useEffect(() => {
+    const fetchStations = async () => {
+      setIsLoadingStations(true);
+      try {
+        const response = await stationService.getAllStations();
+        if (response && Array.isArray(response)) {
+          setStations(response);
+        }
+      } catch (error) {
+        console.error('Error fetching stations:', error);
+      } finally {
+        setIsLoadingStations(false);
+      }
+    };
+    
     fetchStations();
   }, []);
-
-  const fetchStations = async () => {
-    setIsLoadingStations(true);
-    try {
-      const response = await stationService.getAllStations();
-      if (response && Array.isArray(response)) {
-        setStations(response);
-        if (response.length > 0) {
-          setSelectedDepartureStation(response[0]);
-          setSelectedArrivalStation(response.length > 1 ? response[1] : response[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching stations:', error);
-    } finally {
-      setIsLoadingStations(false);
-    }
-  };
 
   const handleSearchTrains = async () => {
     // Validation

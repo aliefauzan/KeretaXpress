@@ -1,6 +1,6 @@
 import React from 'react';
 import { FiRefreshCw } from 'react-icons/fi';
-import { MdOutlineCompareArrows } from 'react-icons/md';
+import { MdOutlineCompareArrows, MdSwapVert } from 'react-icons/md';
 import theme from '@/utils/theme';
 
 interface ScheduleControlsProps {
@@ -65,7 +65,7 @@ const ScheduleControls: React.FC<ScheduleControlsProps> = ({
               className="p-3 border-2 border-gray-200 rounded-xl shadow-sm hover:bg-gray-50 transition-all duration-200 bg-white hover:border-gray-300"
               title={`Urutan ${sortOrder === 'asc' ? 'Naik' : 'Turun'}`}
             >
-              <MdOutlineCompareArrows className={`h-6 w-6 text-gray-600 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
+              <MdSwapVert className={`h-6 w-6 text-gray-600 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} />
             </button>
           </div>
         </div>
