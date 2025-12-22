@@ -19,9 +19,12 @@ import notificationStreamRoutes from './routes/notificationStreamRoutes.js';
 import adminStreamRoutes from './routes/adminStreamRoutes.js';
 import bookingStreamRoutes from './routes/bookingStreamRoutes.js';
 import schedulerRoutes from './routes/schedulerRoutes.js';
+import maintenanceRoutes from './routes/maintenance.js';
+import maintenanceStreamRoutes from './routes/maintenanceStreamRoutes.js';
 
 // Import database to test connection
 import pool from './config/database.js';
+import bookingExpirationService from './services/bookingExpirationService.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -46,21 +49,57 @@ const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ['*'];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is in the allowed list
-    if (corsOrigins.includes('*') || corsOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+const isProduction = process.env.APP_ENV === 'production';
+
+const originIsAllowed = (origin) => {
+  // In production, require an Origin header (disallow requests without Origin)
+  if (!origin) return !isProduction;
+
+  if (corsOrigins.includes('*')) {
+    if (isProduction) {
+      console.warn('CORS: wildcard "*" present in CORS_ORIGIN but running in production — rejecting for safety');
+      return false;
     }
+    return true;
+  }
+
+  if (corsOrigins.includes(origin)) return true;
+
+  for (const o of corsOrigins) {
+    if (o.startsWith('*.')) {
+      const suffix = o.slice(1);
+      if (origin.endsWith(suffix)) return true;
+    }
+  }
+
+  return false;
+};
+
+// CORS options: set optionsSuccessStatus and maxAge for preflight caching
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowed = originIsAllowed(origin);
+    if (!allowed) console.warn(`CORS: rejected origin '${origin}'`);
+    // When allowed, callback with true so the middleware echoes the request Origin
+    callback(null, allowed);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
+  maxAge: parseInt(process.env.CORS_PREFLIGHT_MAX_AGE || '86400', 10)
+};
+
+// Add Vary: Origin header for proper caching behavior
+app.use((req, res, next) => {
+  res.setHeader('Vary', 'Origin');
+  next();
+});
+
+app.use(cors(corsOptions));
+
+// Ensure preflight OPTIONS requests are handled and receive proper CORS headers
+app.options('*', cors(corsOptions));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
@@ -97,11 +136,13 @@ app.use('/api/trains', trainRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin/bookings', adminStreamRoutes); // SSE stream for admin bookings (must be before /api/admin)
 app.use('/api/admin', adminRoutes);
+app.use('/api/maintenance/stream', maintenanceStreamRoutes); // SSE stream for maintenance (public, must be before authenticated routes)
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationStreamRoutes); // SSE stream for notifications
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/bookings', bookingStreamRoutes); // SSE stream for user bookings (must be before /api/bookings)
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/scheduler', schedulerRoutes); // Backup cleanup scheduler
 
 // 404 handler
 app.use((req, res) => {
@@ -130,9 +171,9 @@ const startServer = async () => {
     console.log('✓ Database connected successfully');
     client.release();
     
-    // Note: Booking cleanup is now handled by Google Cloud Functions
-    // See backend/JavaScript/functions/README.md for deployment instructions
-    console.log('ℹ️  Booking cleanup handled by Cloud Scheduler → Cloud Functions');
+    // ⏰ Restore booking expiration timers on server restart
+    await bookingExpirationService.restoreTimers();
+    console.log('✓ Booking expiration service initialized');
     
     // Start server
     app.listen(PORT, () => {

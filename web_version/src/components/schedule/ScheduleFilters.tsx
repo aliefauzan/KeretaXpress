@@ -69,9 +69,8 @@ const ScheduleFilters: React.FC<ScheduleFiltersProps> = ({
               value={departureStationId || ''}
               onChange={(e) => onDepartureStationChange(Number(e.target.value))}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-              required
             >
-              <option value="">Pilih stasiun keberangkatan</option>
+              <option value="">Semua Stasiun</option>
               {stations.map((station) => (
                 <option key={station.id} value={station.id}>
                   {station.name}
@@ -99,9 +98,8 @@ const ScheduleFilters: React.FC<ScheduleFiltersProps> = ({
               value={arrivalStationId || ''}
               onChange={(e) => onArrivalStationChange(Number(e.target.value))}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
-              required
             >
-              <option value="">Pilih stasiun tujuan</option>
+              <option value="">Semua Stasiun</option>
               {stations.map((station) => (
                 <option key={station.id} value={station.id}>
                   {station.name}

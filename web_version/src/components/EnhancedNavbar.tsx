@@ -98,6 +98,7 @@ const EnhancedNavbar: React.FC<EnhancedNavbarProps> = ({
               onSearchClick={handleSearchClick}
               onHistoryClick={handleHistoryClick}
               onNotificationsClick={handleNotificationsClick}
+              isNotificationOpen={isNotificationPanelOpen}
             />
 
             {isLoggedIn ? (

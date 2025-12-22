@@ -67,7 +67,7 @@ backend/JavaScript/
 │   ├── stationController.js     # Station CRUD operations
 │   └── notificationController.js # Notification management
 │
-├── middleware/                  # Express middleware
+├── middlerware/                 # Express middleware
 │   ├── authMiddleware.js        # JWT verification for customers
 │   └── adminMiddleware.js       # Admin authorization checks
 │
@@ -91,7 +91,9 @@ backend/JavaScript/
 │   ├── notificationStreamRoutes.js # SSE: Customer notifications
 │   ├── adminStreamRoutes.js     # SSE: Admin dashboard updates
 │   ├── bookingStreamRoutes.js   # SSE: Booking status changes
-│   └── schedulerRoutes.js       # /api/scheduler/* (Cloud Scheduler jobs)
+│   ├── schedulerRoutes.js       # /api/scheduler/* (Cloud Scheduler jobs)
+│   ├── maintenance.js           # Train maintenance routes
+│   └── maintenanceStreamRoutes.js # SSE: Real-time maintenance updates
 │
 ├── services/                    # External service integrations
 │   ├── supabaseService.js       # Supabase Storage client
@@ -138,7 +140,186 @@ backend/JavaScript/
 - **Midtrans Account**: For payment gateway (Sandbox or Production)
 - **Google Cloud Account**: For deployment (optional, for production)
 
-## 📦 Installation
+---
+
+## ⏰ Booking Expiration System
+
+### **Hybrid Approach: Per-Booking Timers + Scheduler Backup**
+
+KeretaXpress uses a **hybrid system** combining efficient per-booking timers with a scheduler backup:
+
+**Primary System: Per-Booking Timers**
+✅ **Precise 30-minute expiration** (exact timing for each booking)  
+✅ **Efficient** (only runs for bookings that exist)  
+✅ **Real-time** (expires immediately when timer fires)  
+✅ **Cost-effective** (no Cloud Scheduler needed for normal operation)
+
+**Backup System: Scheduler Safety Net**
+✅ **Catches missed bookings** (if server crashes or timer fails)  
+✅ **Recovery mechanism** (processes overdue bookings)  
+✅ **Monitoring capability** (reports system health)  
+✅ **Optional** (can run hourly/daily as safety check)
+
+### **How It Works**
+
+```javascript
+// PRIMARY: Per-Booking Timer (Normal Flow)
+// 1. User creates booking at 10:00 PM
+BookingController.book() → scheduleExpiration(transactionId, 30 minutes)
+
+// 2. Timer fires at 10:30 PM (exactly 30 minutes later)
+setTimeout(() => expireBooking(transactionId), 30 * 60 * 1000)
+
+// 3. Booking expired automatically ✅
+
+// BACKUP: Scheduler (Safety Net)
+// Runs hourly/daily to catch any bookings timers missed
+Cloud Scheduler (every 1 hour)
+  ↓
+POST /api/scheduler/cleanup-bookings
+  ↓
+Query: SELECT bookings WHERE pending AND > 30 minutes old
+  ↓
+For each: expireBooking(transactionId) // Uses same service
+  ↓
+Report: "Found 0 overdue bookings" (if timers working) ✅
+```
+
+### **Advantages Over Single-System Approaches**
+
+| Feature | Hybrid (Current) | Timer-Only | Scheduler-Only |
+|---------|------------------|------------|----------------|
+| Precision | Exact 30 minutes | Exact 30 minutes | Depends on cron |
+| Resource Usage | Minimal | Minimal | High (queries all) |
+| Reliability | Very High | Medium | High |
+| Server Restart | Auto-recovers | Needs restoration | No impact |
+| Edge Cases | Catches all | Might miss some | Catches all |
+| Cost | Very Low | Free | Cloud Scheduler fees |
+
+### **System Architecture**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Booking Created (10:00 PM)                  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+         ┌───────────┴────────────┐
+         │                        │
+         ▼                        ▼
+┌─────────────────┐      ┌──────────────────┐
+│ PRIMARY SYSTEM  │      │  BACKUP SYSTEM   │
+│  (Timers)       │      │  (Scheduler)     │
+├─────────────────┤      ├──────────────────┤
+│ ⏰ 30 min timer │      │ 🕐 Hourly check  │
+│ Fires: 10:30 PM │      │ Runs: 11:00 PM   │
+│                 │      │ Finds: 0 overdue │
+│ ✅ Expires      │      │ ✅ All clear     │
+└─────────────────┘      └──────────────────┘
+         │                        │
+         └───────────┬────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │ bookingExpiration   │
+         │    Service          │
+         │ (Shared Logic)      │
+         └─────────────────────┘
+                     │
+                     ▼
+         ┌─────────────────────┐
+         │ • Update status     │
+         │ • Restore seat      │
+         │ • Send notification │
+         └─────────────────────┘
+```
+
+### **Timer Restoration on Server Restart**
+
+```javascript
+// On server startup, restore timers for pending bookings
+await bookingExpirationService.restoreTimers();
+
+// For each pending booking:
+// - If already expired (> 30 min) → Expire immediately
+// - If still valid (< 30 min) → Schedule remaining time
+
+// Example: Server restarts at 10:20 PM
+// Booking created at 10:00 PM
+// Remaining time: 10 minutes
+// New timer scheduled for 10:30 PM ✅
+```
+
+### **Scheduler Endpoints**
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/scheduler/cleanup-bookings` | POST | Main backup cleanup (called by Cloud Scheduler) |
+| `/api/scheduler/restore-timers` | POST | Manually trigger timer restoration |
+| `/api/scheduler/health` | GET | Health check + active timer count |
+| `/api/scheduler/status` | GET | Detailed system status + overdue count |
+
+### **Optional: Cloud Scheduler Setup**
+
+```bash
+# Create hourly backup cleanup job (optional safety net)
+gcloud scheduler jobs create http cleanup-expired-bookings-backup \
+  --schedule="0 * * * *" \
+  --uri="https://your-api.run.app/api/scheduler/cleanup-bookings" \
+  --http-method=POST \
+  --time-zone="Asia/Jakarta" \
+  --headers="Authorization=Bearer YOUR_SCHEDULER_TOKEN"
+
+# Or for more frequent checks (every 15 minutes)
+# --schedule="*/15 * * * *"
+
+# Expected result in logs when timers are working:
+# "Found 0 overdue bookings - all timers working correctly" ✅
+```
+
+### **Implementation Files**
+
+- **Service**: `services/bookingExpirationService.js` (shared expiration logic)
+- **Routes**: `routes/schedulerRoutes.js` (backup scheduler endpoints)
+- **Booking Creation**: `controllers/bookingController.js` (schedules timer)
+- **Payment Success**: `controllers/paymentController.js` (cancels timer)
+- **Admin Confirmation**: `controllers/adminController.js` (cancels timer)
+- **Server Startup**: `server.js` (restores timers + registers scheduler routes)
+
+### **Monitoring & Testing**
+
+**Check Timer Status:**
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-api.run.app/api/scheduler/status
+
+# Response:
+{
+  "active_timers": 5,
+  "pending_bookings": 5,
+  "expired_overdue": 0,  // Should be 0 if timers working
+  "system": "Per-booking timers with scheduler backup"
+}
+```
+
+**Manual Cleanup Test:**
+```bash
+curl -X POST \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  https://your-api.run.app/api/scheduler/cleanup-bookings
+
+# Response:
+{
+  "success": true,
+  "count": 0,  // 0 means timers caught everything
+  "message": "No expired bookings found"
+}
+```
+
+---
+
+## 🚀 Deployment to Google Cloud Run
+
+### **Prerequisites**
 
 1. **Navigate to backend directory**:
    ```bash
@@ -337,20 +518,29 @@ Server will start on `http://localhost:3000` (or the PORT specified in `.env`)
 
 #### **Authentication**
 ```http
-POST   /api/register
-POST   /api/login
-POST   /api/admin/login
+POST /api/register
+# Register new user account
+
+POST /api/login
+# User login (returns JWT token)
+
+POST /api/admin/login
+# Admin login (returns admin JWT token)
 ```
 
 #### **Stations** (Public Data)
 ```http
-GET    /api/stations              # Get all stations
-GET    /api/stations/:id          # Get station by ID
+GET /api/stations
+# Get all train stations
+
+GET /api/stations/:id
+# Get specific station by ID
 ```
 
 #### **Trains** (Public Browse)
 ```http
-GET    /api/trains/all            # Get all available trains
+GET /api/trains/all
+# Get all available trains
 ```
 
 ---
@@ -359,70 +549,97 @@ GET    /api/trains/all            # Get all available trains
 
 #### **User Authentication**
 ```http
-POST   /api/logout                # Logout user
-GET    /api/user/:id?             # Get user profile
+POST /api/logout
+# Logout current user
+
+GET /api/user/:id?
+# Get user profile (id is optional, defaults to current user)
 ```
 
-#### **Train Search & Management**
+#### **Train Search &amp; Management**
 ```http
-GET    /api/trains/search         # Search trains by filters
-  Query Params:
-  - departure_station: integer (required)
-  - arrival_station: integer (required)
-  - date: YYYY-MM-DD (required)
-  - class_type: string (optional: ekonomi, bisnis, eksekutif)
+GET /api/trains/search
+# Search trains with filters
+# Query Parameters:
+#   - departure_station: integer (required)
+#   - arrival_station: integer (required)
+#   - date: YYYY-MM-DD (required)
+#   - class_type: string (optional: ekonomi, bisnis, eksekutif)
 
-GET    /api/trains/promo          # Get promotional trains
-GET    /api/trains/:id            # Get train details by ID
-GET    /api/trains/:id/available-seats?date=YYYY-MM-DD  # Available seats
+GET /api/trains/promo
+# Get promotional trains
+
+GET /api/trains/:id
+# Get train details by ID
+
+GET /api/trains/:id/available-seats?date=YYYY-MM-DD
+# Get available seats for specific train and date
 ```
 
 #### **Bookings**
 ```http
-POST   /api/bookings              # Create new booking
-  Body: {
-    train_id, travel_date, passenger_name,
-    passenger_id_number, passenger_dob, passenger_gender,
-    seat_number, payment_method
-  }
+POST /api/bookings
+# Create new booking
+# Body: {
+#   train_id: integer,
+#   travel_date: string (YYYY-MM-DD),
+#   passenger_name: string,
+#   passenger_id_number: string,
+#   passenger_dob: string (YYYY-MM-DD),
+#   passenger_gender: string (male/female),
+#   seat_number: string,
+#   payment_method: string
+# }
 
-GET    /api/bookings/history      # Get booking history
-  Query Params:
-  - user_uuid: UUID (optional, admin only)
-  - status: string (optional: pending, confirmed, cancelled, paid)
+GET /api/bookings/history
+# Get booking history
+# Query Parameters:
+#   - user_uuid: UUID (optional, admin only)
+#   - status: string (optional: pending, confirmed, cancelled, paid)
 
-PUT    /api/bookings/:transactionId/status  # Update booking status
-  Body: { status: string }
+PUT /api/bookings/:transactionId/status
+# Update booking status
+# Body: { status: string }
 ```
 
 #### **Payments**
 ```http
-POST   /api/payments/:id/upload   # Upload payment proof (multipart/form-data)
-  Body: payment_proof (file)
+POST /api/payments/:id/upload
+# Upload payment proof (multipart/form-data)
+# Body: payment_proof (file)
 
-POST   /api/payments/midtrans/snap  # Create Midtrans Snap transaction
-  Body: { booking_id: integer }
-  Returns: { snap_token, snap_url }
+POST /api/payments/midtrans/snap
+# Create Midtrans Snap transaction
+# Body: { booking_id: integer }
+# Returns: { snap_token: string, snap_url: string }
 
-POST   /api/payments/midtrans/qris  # Generate QRIS code
-  Body: { booking_id: integer }
-  Returns: { qr_code: base64_string }
+POST /api/payments/midtrans/qris
+# Generate QRIS code for payment
+# Body: { booking_id: integer }
+# Returns: { qr_code: string (base64) }
 
-POST   /api/payments/midtrans/webhook  # Midtrans notification (PUBLIC)
-  Headers: X-Midtrans-Signature
-  Body: Midtrans notification payload
+POST /api/payments/midtrans/webhook
+# Midtrans webhook for payment notifications (PUBLIC)
+# Headers: X-Midtrans-Signature
+# Body: Midtrans notification payload
 ```
 
 #### **Notifications**
 ```http
-GET    /api/notifications         # Get user notifications
-  Query Params:
-  - unread: boolean (optional)
-  - limit: integer (optional, default: 50)
+GET /api/notifications
+# Get user notifications
+# Query Parameters:
+#   - unread: boolean (optional)
+#   - limit: integer (optional, default: 50)
 
-PUT    /api/notifications/:id/read  # Mark notification as read
-PUT    /api/notifications/read-all  # Mark all as read
-DELETE /api/notifications/:id     # Delete notification
+PUT /api/notifications/:id/read
+# Mark notification as read
+
+PUT /api/notifications/read-all
+# Mark all notifications as read
+
+DELETE /api/notifications/:id
+# Delete specific notification
 ```
 
 ---
@@ -431,34 +648,47 @@ DELETE /api/notifications/:id     # Delete notification
 
 #### **Train Management**
 ```http
-POST   /api/admin/trains          # Create new train
-PUT    /api/admin/trains/:id      # Update train
-DELETE /api/admin/trains/:id      # Delete train
+POST /api/admin/trains
+# Create new train schedule
+
+PUT /api/admin/trains/:id
+# Update existing train schedule
+
+DELETE /api/admin/trains/:id
+# Delete train schedule
 ```
 
 #### **Station Management**
 ```http
-POST   /api/admin/stations        # Create new station
-PUT    /api/admin/stations/:id    # Update station
-DELETE /api/admin/stations/:id    # Delete station
+POST /api/admin/stations
+# Create new station
+
+PUT /api/admin/stations/:id
+# Update existing station
+
+DELETE /api/admin/stations/:id
+# Delete station
 ```
 
 #### **Booking Management**
 ```http
-GET    /api/admin/bookings        # Get all bookings
-  Query Params:
-  - status: string (optional)
-  - date_from: YYYY-MM-DD (optional)
-  - date_to: YYYY-MM-DD (optional)
+GET /api/admin/bookings
+# Get all bookings with filters
+# Query Parameters:
+#   - status: string (optional)
+#   - date_from: YYYY-MM-DD (optional)
+#   - date_to: YYYY-MM-DD (optional)
 
-GET    /api/admin/bookings/analytics  # Get booking statistics
-  Returns: { total_bookings, total_revenue, status_breakdown }
+GET /api/admin/bookings/analytics
+# Get booking statistics and analytics
+# Returns: { total_bookings, total_revenue, status_breakdown }
 ```
 
 #### **Payment Confirmation**
 ```http
-POST   /api/admin/payments/confirm  # Manually confirm payment
-  Body: { booking_id: integer, notes: string }
+POST /api/admin/payments/confirm
+# Manually confirm payment
+# Body: { booking_id: integer, notes: string }
 ```
 
 ---
@@ -466,21 +696,24 @@ POST   /api/admin/payments/confirm  # Manually confirm payment
 ### ⚡ **Real-time Endpoints** (SSE Streams)
 
 ```http
-GET    /api/notifications/stream  # Customer notifications (SSE)
-  Headers: Authorization: Bearer <token>
-  Stream: text/event-stream
-  Events: notification, booking_update
+GET /api/notifications/stream
+# Customer real-time notifications (Server-Sent Events)
+# Headers: Authorization: Bearer <token>
+# Stream: text/event-stream
+# Events: notification, booking_update
 
-GET    /api/admin/notifications/stream  # Admin notifications (SSE)
-  Headers: Authorization: Bearer <admin-token>
-  Stream: text/event-stream
-  Events: new_booking, payment_pending
+GET /api/admin/notifications/stream
+# Admin real-time notifications (Server-Sent Events)
+# Headers: Authorization: Bearer <admin-token>
+# Stream: text/event-stream
+# Events: new_booking, payment_pending
 
-GET    /api/bookings/stream       # Booking status updates (SSE)
-  Headers: Authorization: Bearer <token>
-  Query Params: user_uuid (optional, for filtering)
-  Stream: text/event-stream
-  Events: booking_confirmed, booking_cancelled
+GET /api/bookings/stream
+# Booking status updates (Server-Sent Events)
+# Headers: Authorization: Bearer <token>
+# Query Parameters: user_uuid (optional, for filtering)
+# Stream: text/event-stream
+# Events: booking_confirmed, booking_cancelled
 ```
 
 ---
@@ -488,9 +721,10 @@ GET    /api/bookings/stream       # Booking status updates (SSE)
 ### 🤖 **Scheduler Endpoints** (Internal, Cloud Scheduler Only)
 
 ```http
-POST   /api/scheduler/cleanup-bookings  # Cleanup expired bookings
-  Authorization: Cloud Scheduler service account
-  Returns: { cleaned: count, message: string }
+POST /api/scheduler/cleanup-bookings
+# Cleanup expired bookings (called by Cloud Scheduler)
+# Authorization: Cloud Scheduler service account
+# Returns: { cleaned: number, message: string }
 ```
 
 ---
@@ -588,7 +822,7 @@ curl -N -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ### **Google Cloud Run Deployment**
 
-#### **1. Deploy Main API Server**
+#### **Deploy Main API Server**
 ```bash
 cd backend/JavaScript
 
@@ -605,34 +839,6 @@ gcloud run deploy keretaxpress-api \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars="DB_HOST=your-db-host,DB_PASSWORD=your-db-password,JWT_SECRET=your-jwt-secret"
-```
-
-#### **2. Deploy Scheduler Service**
-```bash
-# Build and deploy scheduler
-gcloud builds submit --config cloudbuild-scheduler.yaml
-
-# Or manual deployment
-docker build -f Dockerfile.scheduler -t gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler .
-docker push gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler
-
-gcloud run deploy keretaxpress-scheduler \
-  --image gcr.io/YOUR_PROJECT_ID/keretaxpress-scheduler \
-  --platform managed \
-  --region us-central1 \
-  --no-allow-unauthenticated
-```
-
-#### **3. Configure Cloud Scheduler**
-```bash
-# Create cron job to cleanup expired bookings (runs daily at 2 AM Jakarta time)
-gcloud scheduler jobs create http cleanup-expired-bookings \
-  --schedule="0 2 * * *" \
-  --uri="https://keretaxpress-scheduler-XXXXX.a.run.app/api/scheduler/cleanup-bookings" \
-  --http-method=POST \
-  --time-zone="Asia/Jakarta" \
-  --oidc-service-account-email=YOUR_SERVICE_ACCOUNT@YOUR_PROJECT.iam.gserviceaccount.com \
-  --oidc-token-audience="https://keretaxpress-scheduler-XXXXX.a.run.app"
 ```
 
 ### **Environment Variables for Production**

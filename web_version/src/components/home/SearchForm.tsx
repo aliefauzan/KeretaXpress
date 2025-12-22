@@ -98,7 +98,8 @@ export default function SearchForm({
                     className="block w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white hover:border-gray-300 text-gray-800 font-medium"
                     value={selectedDepartureStation?.id || ''}
                     onChange={(e) => {
-                      const station = stations.find(s => s.id === parseInt(e.target.value));
+                      const val = parseInt(e.target.value);
+                      const station = stations.find(s => Number(s.id) === val);
                       onDepartureStationChange(station || null);
                     }}
                   >
@@ -137,7 +138,8 @@ export default function SearchForm({
                     className="block w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white hover:border-gray-300 text-gray-800 font-medium"
                     value={selectedArrivalStation?.id || ''}
                     onChange={(e) => {
-                      const station = stations.find(s => s.id === parseInt(e.target.value));
+                      const val = parseInt(e.target.value);
+                      const station = stations.find(s => Number(s.id) === val);
                       onArrivalStationChange(station || null);
                     }}
                   >

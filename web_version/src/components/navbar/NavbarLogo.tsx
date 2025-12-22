@@ -11,7 +11,7 @@ interface NavbarLogoProps {
 const NavbarLogo: React.FC<NavbarLogoProps> = ({ isScrolled }) => {
   return (
     <Link href="/" className="flex items-center gap-3 group">
-      <div className={`p-2 rounded-lg transition-all duration-300 ${
+      <div className={`p-2 rounded-lg transition-all duration-300 group-hover:scale-110 ${
         isScrolled 
           ? 'bg-gradient-to-r from-blue-600 to-blue-700' 
           : 'bg-white/20 backdrop-blur-sm border border-white/30'

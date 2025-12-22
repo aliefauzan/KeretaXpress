@@ -38,10 +38,10 @@ export const loginValidation = [
 // Train validations
 export const searchTrainValidation = [
   query('departure_station')
-    .notEmpty().withMessage('Departure station is required')
+    .optional()
     .isInt().withMessage('Departure station must be a valid ID'),
   query('arrival_station')
-    .notEmpty().withMessage('Arrival station is required')
+    .optional()
     .isInt().withMessage('Arrival station must be a valid ID'),
   query('date')
     .notEmpty().withMessage('Date is required')

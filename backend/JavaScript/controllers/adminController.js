@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import Train from '../models/Train.js';
 import Booking from '../models/Booking.js';
 import Notification from '../models/Notification.js';
+import bookingExpirationService from '../services/bookingExpirationService.js';
 
 class AdminController {
   // ==================== TRAIN MANAGEMENT ====================
@@ -329,7 +330,28 @@ class AdminController {
             FROM bookings b 
             WHERE b.train_id = t.id 
             AND b.status IN ('pending', 'paid')
-          ) as total_bookings
+          ) as total_bookings,
+          CASE 
+            WHEN EXISTS (
+              SELECT 1 FROM train_maintenance tm 
+              WHERE tm.train_id = t.id 
+                AND CURRENT_DATE >= tm.start_date 
+                AND CURRENT_DATE <= tm.end_date
+                AND tm.status IN ('scheduled', 'active')
+            ) THEN 'maintenance'
+            ELSE 'active'
+          END as status,
+          (SELECT json_build_object(
+            'id', tm.id,
+            'start_date', tm.start_date,
+            'end_date', tm.end_date,
+            'reason', tm.reason
+          ) FROM train_maintenance tm
+          WHERE tm.train_id = t.id 
+            AND CURRENT_DATE >= tm.start_date 
+            AND CURRENT_DATE <= tm.end_date
+            AND tm.status IN ('scheduled', 'active')
+          LIMIT 1) as current_maintenance
         FROM trains t
         LEFT JOIN stations ds ON t.departure_station_id = ds.id
         LEFT JOIN stations as2 ON t.arrival_station_id = as2.id
@@ -385,6 +407,11 @@ class AdminController {
 
       // Update booking status
       await Booking.updateStatus(transaction_id, bookingStatus);
+
+      // ✅ Cancel automatic expiration timer if payment confirmed
+      if (status === 'paid') {
+        bookingExpirationService.cancelExpiration(transaction_id);
+      }
 
       // Log admin action with notes
       console.log(`✅ Admin ${req.admin.email} manually confirmed payment for ${transaction_id}: ${status}`);

@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import supabaseService from '../services/supabaseService.js';
 import midtransService from '../services/midtransService.js';
+import bookingExpirationService from '../services/bookingExpirationService.js';
 
 class PaymentController {
   // Create payment transaction with Midtrans
@@ -309,6 +310,9 @@ class PaymentController {
       // Update booking status (only if payment is successful)
       if (paidAt) {
         await Booking.updateStatus(order_id, 'paid');
+        
+        // ✅ Cancel automatic expiration timer since payment is completed
+        bookingExpirationService.cancelExpiration(order_id);
         
         // Create notifications for successful payment
         try {

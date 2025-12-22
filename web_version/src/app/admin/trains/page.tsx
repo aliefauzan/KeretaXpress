@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiX, FiRefreshCw, FiTool } from 'react-icons/fi';
 import Modal from '@/components/ui/Modal';
+import MaintenanceModal from '@/components/MaintenanceModal';
 
 interface Train {
   id: number;
@@ -18,6 +19,13 @@ interface Train {
   arrival_time: string;
   price: string;
   total_bookings?: number;
+  status?: string;
+  current_maintenance?: {
+    id: number;
+    start_date: string;
+    end_date: string;
+    reason: string;
+  };
 }
 
 interface Station {
@@ -37,6 +45,12 @@ export default function TrainsPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+  
+  // Maintenance modal state
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [selectedTrainForMaintenance, setSelectedTrainForMaintenance] = useState<Train | null>(null);
+  const [showEndMaintenanceConfirm, setShowEndMaintenanceConfirm] = useState(false);
+  const [maintenanceToEnd, setMaintenanceToEnd] = useState<number | null>(null);
   
   // Filter states
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -69,6 +83,7 @@ export default function TrainsPage() {
       });
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched trains:', data.trains);
         setTrains(data.trains);
       }
     } catch (error) {
@@ -180,6 +195,46 @@ export default function TrainsPage() {
       console.error('Error deleting train:', error);
       setModalMessage('Failed to delete train');
       setShowErrorModal(true);
+    }
+  };
+
+  const handleEndMaintenance = (maintenanceId: number) => {
+    setMaintenanceToEnd(maintenanceId);
+    setShowEndMaintenanceConfirm(true);
+  };
+
+  const confirmEndMaintenance = async () => {
+    if (!maintenanceToEnd) return;
+
+    setShowEndMaintenanceConfirm(false);
+    const token = localStorage.getItem('adminToken');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/maintenance/${maintenanceToEnd}/end`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Force refresh by clearing and re-fetching
+        setTrains([]);
+        await fetchTrains();
+        setModalMessage('Maintenance ended successfully! Train is now active.');
+        setShowSuccessModal(true);
+      } else {
+        setModalMessage(data.message || 'Failed to end maintenance');
+        setShowErrorModal(true);
+      }
+    } catch (error) {
+      console.error('Error ending maintenance:', error);
+      setModalMessage('Failed to end maintenance');
+      setShowErrorModal(true);
+    } finally {
+      setMaintenanceToEnd(null);
     }
   };
 
@@ -397,8 +452,31 @@ export default function TrainsPage() {
               {filteredTrains.map((train) => (
                 <tr key={train.id} className="hover:bg-blue-50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{train.name}</div>
-                    <div className="text-sm text-gray-500">{train.operator}</div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <div className="font-medium text-gray-900">{train.name}</div>
+                          <div className="text-sm text-gray-500">{train.operator}</div>
+                        </div>
+                      </div>
+                      {train.status === 'maintenance' && train.current_maintenance && (
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full flex items-center gap-1">
+                          🔧 Maintenance
+                        </span>
+                        <span className="text-xs text-gray-600">
+                          {new Date(train.current_maintenance.start_date).toLocaleDateString('id-ID')} - {new Date(train.current_maintenance.end_date).toLocaleDateString('id-ID')}
+                        </span>
+                        <button
+                          onClick={() => train.current_maintenance?.id && handleEndMaintenance(train.current_maintenance.id)}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium underline"
+                          title="End maintenance now"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded capitalize">
@@ -428,6 +506,16 @@ export default function TrainsPage() {
                         title="Edit"
                       >
                         <FiEdit size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTrainForMaintenance(train);
+                          setShowMaintenanceModal(true);
+                        }}
+                        className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
+                        title="Schedule Maintenance"
+                      >
+                        <FiTool size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(train.id)}
@@ -665,6 +753,36 @@ export default function TrainsPage() {
         message={modalMessage}
         type="error"
         confirmText="OK"
+      />
+
+      {/* Maintenance Modal */}
+      <MaintenanceModal
+        isOpen={showMaintenanceModal}
+        onClose={() => {
+          setShowMaintenanceModal(false);
+          setSelectedTrainForMaintenance(null);
+        }}
+        train={selectedTrainForMaintenance}
+        onSuccess={() => {
+          fetchTrains();
+          setModalMessage('Maintenance scheduled successfully');
+          setShowSuccessModal(true);
+        }}
+      />
+
+      {/* End Maintenance Confirmation Modal */}
+      <Modal
+        isOpen={showEndMaintenanceConfirm}
+        onClose={() => {
+          setShowEndMaintenanceConfirm(false);
+          setMaintenanceToEnd(null);
+        }}
+        title="End Maintenance"
+        message="Are you sure you want to end this maintenance now? The train will become available immediately."
+        type="confirm"
+        confirmText="OK"
+        cancelText="Cancel"
+        onConfirm={confirmEndMaintenance}
       />
     </div>
   );

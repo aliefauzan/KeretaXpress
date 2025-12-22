@@ -244,10 +244,27 @@ export const stationService = {
 export const trainService = {
   searchTrains: async (params: any) => {
     try {
-      const response = await apiClient.get('/trains/search', { params });
-      if (Array.isArray(response)) {
-        return response.map((train: any) => transformTrainData(train));
+      // Add cache-busting timestamp to force fresh data
+      const paramsWithTimestamp = {
+        ...params,
+        _t: Date.now()
+      };
+      
+      const response = await apiClient.get('/trains/search', { params: paramsWithTimestamp });
+      
+      // Backend returns {trains: [...]} format, not a direct array
+      if (response && response.trains && Array.isArray(response.trains)) {
+        // Return raw response so component can handle transformation consistently
+        return response;
       }
+      
+      // Fallback for direct array response (legacy)
+      if (Array.isArray(response)) {
+        return {
+          trains: response.map((train: any) => transformTrainData(train))
+        };
+      }
+      
       return response;
     } catch (error) {
       console.error('Error searching trains:', error);
@@ -257,7 +274,8 @@ export const trainService = {
 
   getAllTrains: async () => {
     try {
-      return await apiClient.get('/trains/all');
+      // Add cache-busting timestamp to force fresh data
+      return await apiClient.get(`/trains/all?_t=${Date.now()}`);
     } catch (error) {
       console.error('Error fetching all trains:', error);
       throw error;

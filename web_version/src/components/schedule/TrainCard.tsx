@@ -18,8 +18,12 @@ const TrainCard: React.FC<TrainCardProps> = ({
   onSelect,
   onToggleFavorite
 }) => {
+  const isInMaintenance = train.status === 'maintenance';
+
   const handleCardClick = () => {
-    onSelect(train);
+    if (!isInMaintenance) {
+      onSelect(train);
+    }
   };
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -29,11 +33,31 @@ const TrainCard: React.FC<TrainCardProps> = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-100 hover:border-blue-200 ${
-        viewMode === 'grid' ? 'p-4' : 'p-6'
-      }`}
+      className={`bg-white rounded-lg shadow-sm transition-all duration-200 border ${
+        isInMaintenance 
+          ? 'opacity-75 border-red-200 bg-red-50/30 cursor-not-allowed' 
+          : 'hover:shadow-md cursor-pointer border-gray-100 hover:border-blue-200'
+      } ${viewMode === 'grid' ? 'p-4' : 'p-6'}`}
       onClick={handleCardClick}
     >
+      {/* Maintenance Badge */}
+      {isInMaintenance && train.currentMaintenance && (
+        <div className="mb-3 bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-red-800">
+            <span className="text-lg">🔧</span>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Dalam Maintenance</p>
+              <p className="text-xs text-red-700">
+                {new Date(train.currentMaintenance.start_date).toLocaleDateString('id-ID')} - {new Date(train.currentMaintenance.end_date).toLocaleDateString('id-ID')}
+              </p>
+              {train.currentMaintenance.reason && (
+                <p className="text-xs text-red-600 mt-1">{train.currentMaintenance.reason}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Train header with favorite button */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex-1 min-w-0">
@@ -101,13 +125,19 @@ const TrainCard: React.FC<TrainCardProps> = ({
 
       {/* Price and seats */}
       <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-        <div className={`font-bold text-green-600 ${viewMode === 'grid' ? 'text-sm' : 'text-base'}`}>
-          {train.price}
+        <div className={`font-bold ${isInMaintenance ? 'text-gray-400' : 'text-green-600'} ${viewMode === 'grid' ? 'text-sm' : 'text-base'}`}>
+          {isInMaintenance ? 'Tidak Tersedia' : train.price}
         </div>
-        <div className={`flex items-center text-gray-500 ${viewMode === 'grid' ? 'text-xs' : 'text-sm'}`}>
-          <FiUsers className="mr-1 h-3 w-3" />
-          <span>{train.seatsLeft} kursi</span>
-          <FiChevronRight className="ml-2 h-3 w-3 text-gray-400" />
+        <div className={`flex items-center ${isInMaintenance ? 'text-gray-400' : 'text-gray-500'} ${viewMode === 'grid' ? 'text-xs' : 'text-sm'}`}>
+          {isInMaintenance ? (
+            <span className="text-red-600 font-medium">Tidak Bisa Dipesan</span>
+          ) : (
+            <>
+              <FiUsers className="mr-1 h-3 w-3" />
+              <span>{train.seatsLeft} kursi</span>
+              <FiChevronRight className="ml-2 h-3 w-3 text-gray-400" />
+            </>
+          )}
         </div>
       </div>
 
