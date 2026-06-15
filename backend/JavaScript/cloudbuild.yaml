@@ -1,0 +1,110 @@
+steps:
+  # ==================== SHARED: Fetch .env from Secret Manager ====================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fetch-env'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret="express-backend-env" > backend/JavaScript/.env
+
+  # ==================== BACKEND API SERVICE ====================
+  # 1. Build Backend API Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-backend-image'
+    args:
+      - build
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
+      - -f
+      - backend/JavaScript/Dockerfile
+      - backend/JavaScript
+
+  # 2. Push Backend API image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-backend-image'
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
+
+  # 3. Deploy Backend API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-backend-to-cloudrun'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --max-instances=10
+      - --min-instances=0
+      - --quiet
+
+  # ==================== SCHEDULER SERVICE ====================
+  # 4. Build Scheduler Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-scheduler-image'
+    args:
+      - build
+      - -t
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+      - -f
+      - backend/JavaScript/Dockerfile.scheduler
+      - backend/JavaScript
+
+  # 5. Push Scheduler image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-scheduler-image'
+    args:
+      - push
+      - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+
+  # 6. Deploy Scheduler to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-scheduler-to-cloudrun'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SCHEDULER_SERVICE_NAME}
+      - --image=${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+      - --region=${_DEPLOY_REGION}
+      - --platform=${_PLATFORM}
+      - --no-allow-unauthenticated
+      - --port=8080
+      - --memory=256Mi
+      - --cpu=1
+      - --timeout=300s
+      - --max-instances=1
+      - --min-instances=0
+      - --quiet
+
+images:
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA
+  - ${_AR_HOSTNAME}/${_AR_PROJECT_ID}/${_AR_REPOSITORY}/${_SCHEDULER_SERVICE_NAME}:$COMMIT_SHA
+
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _AR_PROJECT_ID: tubesabp-459213
+  _PLATFORM: managed
+  _BACKEND_SERVICE_NAME: express-backend-api
+  _SCHEDULER_SERVICE_NAME: keretaxpress-scheduler
+  REPO_NAME: tubesabp
+  _DEPLOY_REGION: asia-southeast2
+  _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
+  _AR_REPOSITORY: cloud-run-source-deploy
+
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - express-backend-api
+  - keretaxpress-scheduler
+  - dual-service-deployment

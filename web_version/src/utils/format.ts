@@ -20,6 +20,12 @@ export const formatTime = (dateString: string): string => {
   try {
     if (!dateString) return 'Waktu tidak tersedia';
     
+    // If it's already a time string like "07:00" or "07:00:00", return it formatted
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(dateString)) {
+      return dateString.substring(0, 5); // Return HH:MM format
+    }
+    
+    // Otherwise try to parse as date
     const options: Intl.DateTimeFormatOptions = {
       hour: '2-digit',
       minute: '2-digit',
@@ -27,10 +33,6 @@ export const formatTime = (dateString: string): string => {
     };
     const date = new Date(dateString);
     if (isNaN(date.getTime())) {
-      // If it's just a time string like "07:00", try to format it directly
-      if (/^\d{2}:\d{2}$/.test(dateString)) {
-        return dateString;
-      }
       return 'Waktu tidak tersedia';
     }
     return date.toLocaleTimeString('id-ID', options);

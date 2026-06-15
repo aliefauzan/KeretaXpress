@@ -1,37 +1,136 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# ==================== Next.js ====================
+# Dependencies
 /node_modules
 /.pnp
 .pnp.js
+.pnp.*
 
-# testing
+# Testing
 /coverage
+.jest/
 
-# next.js
+# Next.js Build Output
 /.next/
 /out/
 
-# production
+# Production Build
 /build
 
-# misc
-.DS_Store
-*.pem
+# Static Files (if auto-generated)
+.next/static/
+.next/cache/
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
+# ==================== Environment Variables ====================
+# CRITICAL: Never commit these!
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env*.local
 
-# vercel
-.vercel
-
-# typescript
+# ==================== TypeScript ====================
 *.tsbuildinfo
 next-env.d.ts
 
+# ==================== Logs ====================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==================== IDE & Editors ====================
+# VSCode
+.vscode/
+.vscode-test/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ==================== Operating System ====================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ==================== Vercel ====================
+.vercel
+.vercel.json
+
+# ==================== Package Managers ====================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnpm-store/
+
+# ==================== Cache ====================
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+
+# ==================== Security & Sensitive ====================
+# Never commit certificates or keys!
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+
+# ==================== Misc ====================
+*.sw[a-z]
+*~
+.DS_Store_Store
+
+# Copilot instructions (if contains secrets)
 copilot-instructions.md
+
+# Local development scripts
+start-app.ps1
+verify-deployment.ps1
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/

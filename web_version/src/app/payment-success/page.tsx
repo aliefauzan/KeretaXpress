@@ -1,27 +1,68 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Button from '@/components/Button';
 import TripSummaryCard from '@/components/TripSummaryCard';
+import { paymentService, bookingService } from '@/utils/api';
 
-export default function PaymentSuccessPage() {
-  const router = useRouter();  const [booking, setBooking] = useState<any>(null); // Use any for flexible data structure
+function PaymentSuccessContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [booking, setBooking] = useState<any>(null);
   const [train, setTrain] = useState<any>(null);
+  const [isChecking, setIsChecking] = useState(true);
+  const [paymentStatus, setPaymentStatus] = useState<any>(null);
 
   useEffect(() => {
-    // Retrieve booking from sessionStorage
-    const storedBooking = sessionStorage.getItem('currentBooking');
-    const storedTrain = sessionStorage.getItem('selectedTrain');
-    
-    if (!storedBooking || !storedTrain) {
-      router.push('/schedule');
-      return;
-    }
-    
-    setBooking(JSON.parse(storedBooking));
-    setTrain(JSON.parse(storedTrain));
-  }, [router]);  const handleViewBookings = () => {
+    const checkPaymentAndLoadData = async () => {
+      try {
+        // Get order_id from URL (from Midtrans callback)
+        const orderId = searchParams.get('order_id');
+        
+        if (orderId) {
+          // Check payment status from backend
+          console.log('🔍 Checking payment status for:', orderId);
+          const status = await paymentService.checkPaymentStatus(orderId);
+          console.log('✅ Payment status:', status);
+          setPaymentStatus(status);
+          
+          // Load booking from history
+          const user = localStorage.getItem('user');
+          if (user) {
+            const userData = JSON.parse(user);
+            const bookingHistory = await bookingService.getBookingHistory(userData.uuid || userData.id);
+            const foundBooking = bookingHistory.find((b: any) => b.transaction_id === orderId);
+            
+            if (foundBooking) {
+              setBooking(foundBooking);
+              if (foundBooking.train) {
+                setTrain(foundBooking.train);
+              }
+            }
+          }
+        } else {
+          // Fallback: Load from sessionStorage (legacy flow)
+          const storedBooking = sessionStorage.getItem('currentBooking');
+          const storedTrain = sessionStorage.getItem('selectedTrain');
+          
+          if (storedBooking && storedTrain) {
+            setBooking(JSON.parse(storedBooking));
+            setTrain(JSON.parse(storedTrain));
+          } else {
+            router.push('/schedule');
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking payment:', error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkPaymentAndLoadData();
+  }, [router, searchParams]);  const handleViewBookings = () => {
     router.push('/booking-history');
   };
 
@@ -35,16 +76,18 @@ export default function PaymentSuccessPage() {
     router.push('/');
   };
 
-  if (!booking || !train) {
+  if (isChecking || !booking || !train) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-lg">Memuat detail pemesanan...</p>
+          <p className="text-lg text-white drop-shadow">Memverifikasi pembayaran...</p>
         </div>
       </div>
     );
-  }  return (
+  }
+
+  return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center text-white drop-shadow-lg">
@@ -83,14 +126,23 @@ export default function PaymentSuccessPage() {
             </div>
             
             <div className="p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-gray-600 mb-1">Status</p>
+              <p className="text-xs text-gray-600 mb-1">Status Pembayaran</p>
               <p className="font-medium text-green-600 flex items-center">
                 <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Terkonfirmasi
+                {paymentStatus?.status === 'paid' ? 'Terbayar' : 'Terkonfirmasi'}
               </p>
             </div>
+            
+            {paymentStatus?.payment_type && (
+              <div className="p-3 bg-blue-50 rounded-lg col-span-full">
+                <p className="text-xs text-gray-600 mb-1">Metode Pembayaran</p>
+                <p className="font-medium text-blue-600 capitalize">
+                  {paymentStatus.payment_type.replace('_', ' ')}
+                </p>
+              </div>
+            )}
           </div>
         </div>
           {/* Action Buttons */}
@@ -118,5 +170,20 @@ export default function PaymentSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-white drop-shadow">Memuat...</p>
+        </div>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

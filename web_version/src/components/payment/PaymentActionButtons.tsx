@@ -19,17 +19,20 @@ export default function PaymentActionButtons({
       <Button
         onClick={onConfirmPayment}
         disabled={isProcessing}
-        className="w-full bg-primary text-white hover:bg-primary-dark font-bold text-lg py-4 shadow-lg border-0"
+        className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 font-bold text-lg py-5 shadow-lg border-0 transition-all duration-300"
       >
         {isProcessing ? (
           <div className="flex items-center justify-center">
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-            Memproses...
+            Memproses Pembayaran...
           </div>
         ) : (
-          <div className="flex items-center justify-center">
-            <FiCheckCircle className="w-5 h-5 mr-2" />
-            KONFIRMASI PEMBAYARAN
+          <div className="flex flex-col items-center justify-center">
+            <div className="flex items-center">
+              <FiCheckCircle className="w-6 h-6 mr-2" />
+              <span>LANJUT KE PEMBAYARAN</span>
+            </div>
+            <span className="text-xs mt-1 opacity-90">Pilih metode pembayaran Anda</span>
           </div>
         )}
       </Button>

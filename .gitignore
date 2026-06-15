@@ -1,0 +1,213 @@
+# ==================== KeretaXpress Project Root .gitignore ====================
+# This file covers common patterns for the entire project
+
+# ==================== Node.js (All Subdirectories) ====================
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/lerna-debug.log*
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# ==================== Environment Variables (CRITICAL!) ====================
+# Never commit these anywhere in the project!
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+**/.env.*.local
+
+# Database configuration with credentials
+**/config/database.local.js
+**/database.local.js
+
+# ==================== Logs ====================
+**/logs/
+**/*.log
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# ==================== IDE & Editors ====================
+# VSCode
+.vscode/
+**/.vscode/
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+**/.idea/
+**/*.iml
+**/*.ipr
+**/*.iws
+
+# Vim
+**/*.swp
+**/*.swo
+**/*~
+**/.*.sw[a-z]
+
+# Sublime Text
+**/*.sublime-project
+**/*.sublime-workspace
+
+# ==================== Operating Systems ====================
+# macOS
+.DS_Store
+**/.DS_Store
+**/.AppleDouble
+**/.LSOverride
+**/Icon
+**/._*
+**/.DocumentRevisions-V100
+**/.fseventsd
+**/.Spotlight-V100
+**/.TemporaryItems
+**/.Trashes
+**/.VolumeIcon.icns
+
+# Windows
+**/Thumbs.db
+**/Thumbs.db:encryptable
+**/ehthumbs.db
+**/ehthumbs_vista.db
+**/*.stackdump
+**/[Dd]esktop.ini
+**/$RECYCLE.BIN/
+**/*.lnk
+
+# Linux
+**/.directory
+**/.Trash-*
+**/.nfs*
+
+# ==================== Build Outputs ====================
+**/dist/
+**/build/
+**/out/
+**/.next/
+**/*.tsbuildinfo
+
+# ==================== Testing & Coverage ====================
+**/coverage/
+**/.nyc_output/
+**/.jest/
+
+# ==================== Caches ====================
+**/.cache/
+**/.npm/
+**/.eslintcache
+**/.parcel-cache/
+
+# ==================== Security & Sensitive (CRITICAL!) ====================
+# Never commit private keys, certificates, tokens, or secrets!
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.crt
+**/*.cer
+**/*.der
+**/secrets/
+**/private/
+
+# Admin account creation scripts (may contain passwords)
+**/create_admin_backup.js
+**/admin_credentials.txt
+
+# ==================== Uploads & Temporary Files ====================
+**/uploads/*
+!**/uploads/.gitkeep
+**/temp/
+**/tmp/
+**/*.tmp
+**/*.temp
+
+# Payment QR codes (temporary storage)
+**/uploads/qr_codes/*
+!**/uploads/qr_codes/.gitkeep
+
+# ==================== Database Files ====================
+# Database dumps (if stored locally)
+**/*.sql
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+
+# Exclude migration SQL files that should be committed
+!**/migrations/*.sql
+!**/database/migrations/*.sql
+
+# ==================== Backend Specific ====================
+# JavaScript/Node.js Backend
+backend/JavaScript/node_modules/
+backend/JavaScript/uploads/
+backend/JavaScript/logs/
+backend/JavaScript/.env
+backend/JavaScript/config/database.local.js
+
+# Laravel Backend (if used)
+backend/Laravel/vendor/
+backend/Laravel/.env
+backend/Laravel/storage/*.key
+backend/Laravel/storage/logs/
+backend/Laravel/storage/framework/sessions/
+backend/Laravel/storage/framework/cache/
+backend/Laravel/bootstrap/cache/*.php
+
+# ==================== Frontend Specific ====================
+# Next.js Web Version
+web_version/node_modules/
+web_version/.next/
+web_version/out/
+web_version/.env
+web_version/.env.local
+web_version/.env.production.local
+
+# ==================== Documentation Temporary Files ====================
+**/*.md~
+**/.~lock.*
+**/~$*.docx
+**/~$*.xlsx
+
+# ==================== Deployment ====================
+.vercel
+**/.vercel
+
+# Docker (if used)
+**/.dockerignore
+**/docker-compose.override.yml
+
+# ==================== Git ====================
+*.orig
+*.rej
+.gitattributes.local
+
+# ==================== Project Specific ====================
+# Backup files
+**/backup/
+**/*.backup
+**/*.bak
+
+# Test data
+**/test-data/
+**/mock-data.json
+
+# Development scripts with sensitive info
+**/*_local.*
+**/*_dev.*
+**/*_test.*
+
+# ==================== Allow These Important Files ====================
+# Keep these files that might match patterns above
+!README.md
+!**/README.md
+!LICENSE
+!.gitignore
+!**/.gitignore
+!.gitkeep
+!**/.gitkeep

@@ -6,47 +6,65 @@ import { formatCurrency } from '@/utils/format';
 const transformTrainData = (train: any): Train => {
   if (!train) return {} as Train;
   
-  // Format date and time from departure_time if available
+  // Format date and time - departure_time and arrival_time are now TIME type (HH:MM:SS)
   let date = '';
   let time = '';
   let arrivalTime = '';
   
   if (train.departure_time) {
-    const departureDateTime = new Date(train.departure_time);
-    date = departureDateTime.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-    time = departureDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // departure_time is now TIME (HH:MM:SS), just format it
+    time = train.departure_time.substring(0, 5); // Get HH:MM
   }
   
   if (train.arrival_time) {
-    const arrivalDateTime = new Date(train.arrival_time);
-    arrivalTime = arrivalDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // arrival_time is now TIME (HH:MM:SS), just format it
+    arrivalTime = train.arrival_time.substring(0, 5); // Get HH:MM
   }
   
-  // Calculate duration from departure and arrival times or use travel_time if available
+  // Calculate duration from duration_minutes if available, otherwise calculate from times
   let duration = train.travel_time || '';
-  if (!duration && train.departure_time && train.arrival_time) {
-    const departureTime = new Date(train.departure_time).getTime();
-    const arrivalTime = new Date(train.arrival_time).getTime();
-    const durationMinutes = Math.floor((arrivalTime - departureTime) / 60000);
+  if (!duration && train.duration_minutes) {
+    const hours = Math.floor(train.duration_minutes / 60);
+    const minutes = train.duration_minutes % 60;
+    
+    if (hours > 0) {
+      duration = `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
+    } else {
+      duration = `${minutes}m`;
+    }
+  } else if (!duration && train.departure_time && train.arrival_time) {
+    // Fallback: calculate from time strings
+    const [depHour, depMin] = train.departure_time.split(':').map(Number);
+    const [arrHour, arrMin] = train.arrival_time.split(':').map(Number);
+    let durationMinutes = (arrHour * 60 + arrMin) - (depHour * 60 + depMin);
+    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+    
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
     
     if (hours > 0) {
-      duration = `${hours}h ${minutes}m`;
+      duration = `${hours}h ${minutes > 0 ? minutes + 'm' : ''}`;
     } else {
       duration = `${minutes}m`;
     }
   }
   
-  // Get station names
+  // Get station names - backend returns departure_station_name and arrival_station_name directly
   let departureStationName = '';
   let arrivalStationName = '';
   
-  if (train.departure_station) {
+  // Check for direct fields first (from train search/list)
+  if (train.departure_station_name) {
+    departureStationName = train.departure_station_name;
+  } else if (train.departure_station) {
+    // Fallback to nested object (from booking history)
     departureStationName = train.departure_station.name;
   }
   
-  if (train.arrival_station) {
+  if (train.arrival_station_name) {
+    arrivalStationName = train.arrival_station_name;
+  } else if (train.arrival_station) {
+    // Fallback to nested object (from booking history)
     arrivalStationName = train.arrival_station.name;
   }
   
@@ -85,18 +103,18 @@ const transformBookingData = (booking: any): BookingDisplay => {
     date = travelDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   }
   
-  // Format time from train's departure_time if available
+  // Format time - departure_time and arrival_time are now TIME type (HH:MM:SS)
   let time = '';
   let arrivalTime = '';
   
   if (train.departure_time) {
-    const departureDateTime = new Date(train.departure_time);
-    time = departureDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // departure_time is now TIME (HH:MM:SS), just format it
+    time = train.departure_time.substring(0, 5); // Get HH:MM
   }
   
   if (train.arrival_time) {
-    const arrivalDateTime = new Date(train.arrival_time);
-    arrivalTime = arrivalDateTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // arrival_time is now TIME (HH:MM:SS), just format it
+    arrivalTime = train.arrival_time.substring(0, 5); // Get HH:MM
   }
   
   const statusMap: { [key: string]: string } = {
@@ -226,10 +244,27 @@ export const stationService = {
 export const trainService = {
   searchTrains: async (params: any) => {
     try {
-      const response = await apiClient.get('/trains/search', { params });
-      if (Array.isArray(response)) {
-        return response.map((train: any) => transformTrainData(train));
+      // Add cache-busting timestamp to force fresh data
+      const paramsWithTimestamp = {
+        ...params,
+        _t: Date.now()
+      };
+      
+      const response = await apiClient.get('/trains/search', { params: paramsWithTimestamp });
+      
+      // Backend returns {trains: [...]} format, not a direct array
+      if (response && response.trains && Array.isArray(response.trains)) {
+        // Return raw response so component can handle transformation consistently
+        return response;
       }
+      
+      // Fallback for direct array response (legacy)
+      if (Array.isArray(response)) {
+        return {
+          trains: response.map((train: any) => transformTrainData(train))
+        };
+      }
+      
       return response;
     } catch (error) {
       console.error('Error searching trains:', error);
@@ -239,7 +274,8 @@ export const trainService = {
 
   getAllTrains: async () => {
     try {
-      return await apiClient.get('/trains/all');
+      // Add cache-busting timestamp to force fresh data
+      return await apiClient.get(`/trains/all?_t=${Date.now()}`);
     } catch (error) {
       console.error('Error fetching all trains:', error);
       throw error;
@@ -300,19 +336,12 @@ export const bookingService = {
       throw error;
     }
   },
-
-  uploadPaymentProof: async (bookingId: number, file: File) => {
+  
+  cancelBooking: async (transactionId: string) => {
     try {
-      const formData = new FormData();
-      formData.append('proof', file);
-      
-      return await apiClient.post(`/payments/${bookingId}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      return await apiClient.post(`/bookings/${transactionId}/cancel`);
     } catch (error) {
-      console.error('Error uploading payment proof:', error);
+      console.error('Error cancelling booking:', error);
       throw error;
     }
   }
@@ -320,15 +349,38 @@ export const bookingService = {
 
 // Payment services
 export const paymentService = {
-  uploadPaymentProof: async (bookingId: number, formData: FormData) => {
+  // Create Midtrans payment
+  createPayment: async (transactionId: string, useQrPayment: boolean = false) => {
     try {
-      return await apiClient.post(`/payments/${bookingId}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await apiClient.post('/payments/create', { 
+        transaction_id: transactionId,
+        use_qr_payment: useQrPayment
       });
+      return response;
     } catch (error) {
-      console.error('Error uploading payment proof:', error);
+      console.error('Error creating payment:', error);
+      throw error;
+    }
+  },
+
+  // Check payment status
+  checkPaymentStatus: async (transactionId: string) => {
+    try {
+      const response = await apiClient.get(`/payments/status/${transactionId}`);
+      return response;
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      throw error;
+    }
+  },
+
+  // Get payment details from payments table
+  getPaymentDetails: async (transactionId: string) => {
+    try {
+      const response = await apiClient.get(`/payments/details/${transactionId}`);
+      return response;
+    } catch (error) {
+      console.error('Error getting payment details:', error);
       throw error;
     }
   }

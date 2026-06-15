@@ -30,19 +30,23 @@ const TrainList: React.FC<TrainListProps> = ({
     return <ScheduleSkeleton />;
   }
 
-  if (error) {
+  // Don't show error UI here - errors are handled via Toast notifications
+  // Just show empty state if there's an error and no trains
+  if (error && trains.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <div className="mx-auto w-24 h-24 mb-4 text-red-400">
+      <div className="bg-white rounded-xl shadow-card p-12 text-center">
+        <div className="mx-auto w-24 h-24 mb-6 text-gray-300">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Terjadi Kesalahan</h3>
-        <p className="text-red-600 mb-4">{error}</p>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak Ada Hasil</h3>
+        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          Maaf, terjadi kesalahan saat memuat data atau tidak ada jadwal yang tersedia saat ini.
+        </p>
         <button
           onClick={onRetry}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium shadow-sm"
         >
           Coba Lagi
         </button>
@@ -52,19 +56,19 @@ const TrainList: React.FC<TrainListProps> = ({
 
   if (trains.length === 0) {
     return (
-      <div className="py-12 text-center">
-        <div className="mx-auto w-24 h-24 mb-4 text-gray-400">
+      <div className="bg-white rounded-xl shadow-card p-12 text-center">
+        <div className="mx-auto w-24 h-24 mb-6 text-gray-300">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-1.009-5.7-2.6M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak Ada Kereta Ditemukan</h3>
-        <p className="text-gray-600 mb-4">
-          Tidak ada kereta yang sesuai dengan filter yang dipilih
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Tidak Ada Kereta Ditemukan</h3>
+        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+          Tidak ada jadwal kereta yang sesuai dengan kriteria pencarian Anda. Coba ubah filter atau tanggal keberangkatan.
         </p>
         <button
           onClick={onResetFilters}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          className="px-6 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium shadow-sm"
         >
           Reset Filter
         </button>
@@ -76,7 +80,7 @@ const TrainList: React.FC<TrainListProps> = ({
     <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}`}>
       {trains.map((train: Train) => (
         <TrainCard
-          key={train.id}
+          key={`${train.id}-${train.status}-${train.currentMaintenance?.id || 'none'}`}
           train={train}
           viewMode={viewMode}
           isFavorite={favoriteTrains.includes(train.id)}

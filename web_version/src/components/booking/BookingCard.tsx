@@ -1,26 +1,80 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/Button';
+import Modal from '@/components/ui/Modal';
 import { formatCurrency, formatDate, formatTime } from '@/utils/format';
-import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiAlertCircle, FiInfo, FiX, FiDownload } from 'react-icons/fi';
 import { Train } from '@/types';
+import { bookingService } from '@/utils/api';
+import { openTicketInNewTab, downloadTicket } from '@/utils/ticketGenerator';
 
 interface BookingCardProps {
   booking: any;
   train: Train;
   displayStatus: string;
   isLoadingAction: boolean;
+  onCancelSuccess?: () => void;
 }
 
 const BookingCard: React.FC<BookingCardProps> = ({ 
   booking, 
   train, 
   displayStatus, 
-  isLoadingAction 
+  isLoadingAction,
+  onCancelSuccess 
 }) => {
   const router = useRouter();
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+
+  const handleCancelBooking = async () => {
+    if (!booking.transaction_id) return;
+    
+    setIsCancelling(true);
+    try {
+      await bookingService.cancelBooking(booking.transaction_id);
+      setShowCancelConfirm(false);
+      setModalMessage('Booking berhasil dibatalkan');
+      setShowSuccessModal(true);
+      if (onCancelSuccess) {
+        onCancelSuccess();
+      }
+    } catch (error: any) {
+      console.error('Error cancelling booking:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Gagal membatalkan booking';
+      setModalMessage(errorMessage);
+      setShowErrorModal(true);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleDownloadTicket = () => {
+    const ticketData = {
+      booking: booking,
+      train: {
+        name: booking.train_name || train.name,
+        class_type: booking.class_type || train.classType,
+        departure_time: booking.departure_time || train.time,
+        arrival_time: booking.arrival_time || train.arrivalTime,
+        departure_station: booking.departure_station,
+        arrival_station: booking.arrival_station
+      },
+      passenger: {
+        name: booking.passenger_name || 'N/A',
+        idNumber: booking.passenger_id_number || 'N/A',
+        seatNumber: booking.seat_number || 'N/A'
+      }
+    };
+    
+    // Open ticket in new tab for viewing/printing
+    openTicketInNewTab(ticketData);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -132,26 +186,71 @@ const BookingCard: React.FC<BookingCardProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-3 border-t border-gray-200">
           {displayStatus.toLowerCase() === 'pending' && (
-            <Button 
-              onClick={() => router.push(`/payment?bookingId=${booking.transaction_id}`)} 
-              variant="primary"
-              size="sm"
-              disabled={isLoadingAction}
-            >
-              Lanjutkan Pembayaran
-            </Button>
+            <>
+              <Button 
+                onClick={() => setShowCancelConfirm(true)} 
+                variant="outline"
+                size="sm"
+                disabled={isLoadingAction || isCancelling}
+                className="border-red-500 text-red-500 hover:bg-red-50"
+              >
+                <FiX className="mr-1" /> Batalkan
+              </Button>
+              <Button 
+                onClick={() => router.push(`/payment?bookingId=${booking.transaction_id}`)} 
+                variant="primary"
+                size="sm"
+                disabled={isLoadingAction}
+              >
+                Lanjutkan Pembayaran
+              </Button>
+            </>
           )}
           {(displayStatus.toLowerCase() === 'confirmed' || displayStatus.toLowerCase() === 'paid') && (
             <Button 
-              onClick={() => alert(`Fitur download tiket untuk ${booking.transaction_id} belum tersedia.`)} 
+              onClick={handleDownloadTicket} 
               variant="outline"
               size="sm"
             >
-              Download Tiket
+              <FiDownload className="mr-1" /> Download Tiket
             </Button>
           )}
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal
+        isOpen={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        title="Konfirmasi Pembatalan"
+        message={`Apakah Anda yakin ingin membatalkan booking ini?\nID: ${booking.transaction_id}`}
+        type="confirm"
+        confirmText="Ya, Batalkan"
+        cancelText="Batal"
+        onConfirm={handleCancelBooking}
+        isLoading={isCancelling}
+        loadingText="Membatalkan..."
+      />
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil"
+        message={modalMessage}
+        type="success"
+        confirmText="OK"
+      />
+
+      {/* Error Modal */}
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Gagal"
+        message={modalMessage}
+        type="error"
+        confirmText="OK"
+      />
     </div>
   );
 };
